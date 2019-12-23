@@ -49,18 +49,18 @@ jobs:
       run: cargo clippy -- -D clippy::all
       continue-on-error: ${{ matrix.can-fail }}
       
-    - name: Build feature crosterm-backend
+    - name: Build with feature crosterm-backend
       run: cargo build --no-default-features --features="crossterm-backend"
       continue-on-error: ${{ matrix.can-fail }}            
-    - name: Build feature termion-backend
+    - name: Build with feature termion-backend
       if: matrix.os != 'windows-2019'
       run: cargo build --no-default-features --features="termion-backend"
       continue-on-error: ${{ matrix.can-fail }}
       
-    - name: Build feature crosterm-backend
+    - name: Test with feature crosterm-backend
       run: cargo test --no-default-features --features="crossterm-backend"
       continue-on-error: ${{ matrix.can-fail }}            
-    - name: Build feature termion-backend
+    - name: Test with feature termion-backend
       if: matrix.os != 'windows-2019'
       run: cargo text --no-default-features --features="termion-backend"
       continue-on-error: ${{ matrix.can-fail }}
