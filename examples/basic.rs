@@ -1,6 +1,6 @@
 use std::{fs::File, thread, time::Duration};
 
-use terminal_adapter::{error, stderr, stdout, Action, ClearType, Result, Terminal, Value};
+use terminal_adapter::{error, stderr, stdout, Action, Clear, Result, Terminal, Value};
 
 fn different_buffers() {
     let _stdout = stdout();
@@ -36,7 +36,7 @@ fn perform_action() -> error::Result<()> {
 /// Batches multiple actions before executing.
 fn batch_actions() -> error::Result<()> {
     let terminal = stdout();
-    terminal.batch(Action::ClearTerminal(ClearType::All))?;
+    terminal.batch(Action::ClearTerminal(Clear::All))?;
     terminal.batch(Action::MoveCursorTo(5, 5))?;
 
     thread::sleep(Duration::from_millis(2000));
@@ -55,7 +55,7 @@ fn lock_terminal() -> error::Result<()> {
         println!("{}", i);
 
         if i % 100 == 0 {
-            lock.act(Action::ClearTerminal(ClearType::All))?;
+            lock.act(Action::ClearTerminal(Clear::All))?;
             lock.act(Action::MoveCursorTo(0, 0))?;
         }
         thread::sleep(Duration::from_millis(10));

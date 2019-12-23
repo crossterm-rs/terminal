@@ -20,7 +20,7 @@ use termion::{
     screen, style, terminal_size,
 };
 
-use crate::{backend::{resize, termion::cursor::position, Backend}, error, error::ErrorKind, Action, Attribute, Color, Event, Result, Value, ClearType};
+use crate::{backend::{resize, termion::cursor::position, Backend}, error, error::ErrorKind, Action, Attribute, Color, Event, Result, Value, Clear};
 
 /// A sequence of escape codes to enable terminal mouse support.
 /// We use this directly instead of using `MouseTerminal` from termion.
@@ -203,11 +203,11 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             Action::ShowCursor => self.w_display(&cursor::Show, buffer)?,
             Action::ClearTerminal(clear_type) => {
                 match clear_type {
-                    ClearType::All => {self.w_display(&clear::All, buffer)?;},
-                    ClearType::FromCursorDown => self.w_display(&clear::AfterCursor, buffer)?,
-                    ClearType::FromCursorUp => self.w_display(&clear::BeforeCursor, buffer)?,
-                    ClearType::CurrentLine => self.w_display(&clear::CurrentLine, buffer)?,
-                    ClearType::UntilNewLine => self.w_display(&clear::UntilNewline, buffer)?,
+                    Clear::All => {self.w_display(&clear::All, buffer)?;},
+                    Clear::FromCursorDown => self.w_display(&clear::AfterCursor, buffer)?,
+                    Clear::FromCursorUp => self.w_display(&clear::BeforeCursor, buffer)?,
+                    Clear::CurrentLine => self.w_display(&clear::CurrentLine, buffer)?,
+                    Clear::UntilNewLine => self.w_display(&clear::UntilNewline, buffer)?,
                 }
             },
             Action::EnterAlternateScreen => self.w_display(&screen::ToAlternateScreen, buffer)?,

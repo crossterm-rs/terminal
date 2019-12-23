@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use terminal_adapter::{error, stdout, Action, ClearType, Color, TerminalLock};
+use terminal_adapter::{error, stdout, Action, Clear, Color, TerminalLock};
 
 fn test_color_values_matrix_16x16<W, F>(
     w: &mut TerminalLock<W>,
@@ -11,7 +11,7 @@ where
     W: Write,
     F: Fn(u16, u16) -> Color,
 {
-    w.batch(Action::ClearTerminal(ClearType::All));
+    w.batch(Action::ClearTerminal(Clear::All));
 
     print!("{}", title);
 

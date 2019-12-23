@@ -3,7 +3,7 @@
 pub use self::{
     action::{Action, Result, Value},
     enums::{
-        Attribute, ClearType, Color, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton,
+        Attribute, Clear, Color, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton,
         MouseEvent,
     },
     terminal::{stderr, stdout, Terminal, TerminalLock},

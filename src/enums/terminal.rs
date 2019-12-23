@@ -1,7 +1,7 @@
 /// Different ways to clear the terminal buffer.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum ClearType {
+pub enum Clear {
     /// All cells.
     All,
     /// All cells from the cursor position downwards.

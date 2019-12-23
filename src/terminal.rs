@@ -27,13 +27,13 @@ pub fn stderr() -> Terminal<Stderr> {
 /// # Examples
 ///
 /// ```rust
-/// use terminal_adapter::{ClearType, Action, Value, Result, error};
+/// use terminal_adapter::{Clear, Action, Value, Result, error};
 ///
 /// pub fn main() -> error::Result<()> {
 ///     let terminal = terminal_adapter::stdout();
 ///
 ///     // perform an single action.
-///     terminal.act(Action::ClearTerminal(ClearType::All))?;
+///     terminal.act(Action::ClearTerminal(Clear::All))?;
 ///
 ///     // batch multiple actions.
 ///     for i in 0..100 {

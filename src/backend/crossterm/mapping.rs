@@ -3,7 +3,7 @@ use std::{error::Error, io};
 use crossterm::{event, style, terminal};
 
 use crate::{
-    error::ErrorKind, Attribute, ClearType, Color, Event, KeyCode, KeyEvent, KeyModifiers,
+    error::ErrorKind, Attribute, Clear, Color, Event, KeyCode, KeyEvent, KeyModifiers,
     MouseButton, MouseEvent,
 };
 
@@ -61,14 +61,14 @@ impl From<Color> for style::Color {
     }
 }
 
-impl From<ClearType> for terminal::ClearType {
-    fn from(clear_type: ClearType) -> Self {
+impl From<Clear> for terminal::ClearType {
+    fn from(clear_type: Clear) -> Self {
         match clear_type {
-            ClearType::All => terminal::ClearType::All,
-            ClearType::FromCursorDown => terminal::ClearType::FromCursorDown,
-            ClearType::FromCursorUp => terminal::ClearType::FromCursorUp,
-            ClearType::CurrentLine => terminal::ClearType::CurrentLine,
-            ClearType::UntilNewLine => terminal::ClearType::UntilNewLine,
+            Clear::All => terminal::ClearType::All,
+            Clear::FromCursorDown => terminal::ClearType::FromCursorDown,
+            Clear::FromCursorUp => terminal::ClearType::FromCursorUp,
+            Clear::CurrentLine => terminal::ClearType::CurrentLine,
+            Clear::UntilNewLine => terminal::ClearType::UntilNewLine,
         }
     }
 }

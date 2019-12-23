@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::{Attribute, ClearType, Color, Event};
+use crate::{Attribute, Clear, Color, Event};
 
 /// A value that can be retrieved from the terminal.
 ///
@@ -44,7 +44,7 @@ pub enum Action {
     /// Disables blinking of the terminal cursor.
     DisableBlinking,
     /// Clears the terminal screen buffer.
-    ClearTerminal(ClearType),
+    ClearTerminal(Clear),
     /// Sets the terminal size (columns, rows).
     SetTerminalSize(u16, u16),
     /// Scrolls the terminal screen a given number of rows up.

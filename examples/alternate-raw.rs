@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use terminal_adapter::{stdout, Action, ClearType, Event, KeyCode, KeyEvent, Result, TerminalLock, Value};
+use terminal_adapter::{stdout, Action, Clear, Event, KeyCode, KeyEvent, Result, TerminalLock, Value};
 
 fn main() {
     let terminal = stdout();
@@ -47,7 +47,7 @@ fn main() {
 }
 
 fn write_alt_screen_msg<W: Write>(screen: &mut TerminalLock<W>) {
-    screen.act(Action::ClearTerminal(ClearType::All)).unwrap();
+    screen.act(Action::ClearTerminal(Clear::All)).unwrap();
     screen.act(Action::MoveCursorTo(1, 1)).unwrap();
 
     print!("Welcome to the alternate screen.\n\r");
