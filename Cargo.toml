@@ -1,0 +1,26 @@
+[package]
+name = "terminal"
+version = "0.1.0"
+authors = ["Timon Post <timonpost@hotmail.nl>"]
+edition = "2018"
+
+[features]
+termion-backend = ["termion", "signal-hook", "libc", "crossbeam-channel"]
+crossterm-backend = ["crossterm"]
+
+[dependencies.termion]
+optional = true
+version = "1.5.3"
+
+[dependencies.crossterm]
+optional = true
+version = "0.14"
+
+[dependencies]
+bitflags="1.2.1"
+lazy_static = "1.4.0"
+
+[target.'cfg(unix)'.dependencies]
+signal-hook = { version = "0.1.8", optional = true }
+libc = { version = "0.2.51", optional = true }
+crossbeam-channel = { version = "0.4.0", optional = true }
