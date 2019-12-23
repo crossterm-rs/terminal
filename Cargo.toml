@@ -1,7 +1,8 @@
 [package]
 name = "terminal"
 version = "0.4.0"
-authors = ["Timon Post"]
+authors = ["T. Post"]
+description = "Unified API for different TUI libraries."
 edition = "2018"
 repository = "https://github.com/crossterm-rs/terminal"
 documentation = "https://docs.rs/terminal/"
