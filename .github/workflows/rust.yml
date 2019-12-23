@@ -35,35 +35,37 @@ jobs:
       with:
         rust-version: ${{ matrix.rust }}
         components: rustfmt,clippy
-#     - name: Toolchain Information
-#       run: |
-#         rustc --version
-#         rustfmt --version
-#         rustup --version
-#         cargo --version
-#     - name: Check Formatting
-#       if: matrix.rust == 'stable'
-#       run: cargo fmt --all -- --check
-#       continue-on-error: ${{ matrix.can-fail }}
-#     - name: Clippy
-#       run: cargo clippy -- -D clippy::all
-#       continue-on-error: ${{ matrix.can-fail }}
-#     - name: Test Build
-#       run: cargo build
-#       continue-on-error: ${{ matrix.can-fail }}
-    - name: Test default features
-      run: | 
-        cargo test --lib --no-default-features --features="crossterm-backend" -- --nocapture --test-threads 1
-        if: matrix.os != 'windows-2019'
-        cargo test --lib --no-default-features --features="termion-backend" -- --nocapture --test-threads 1
+    - name: Toolchain Information
+      run: |
+        rustc --version
+        rustfmt --version
+        rustup --version
+        cargo --version
+    - name: Check Formatting
+      if: matrix.rust == 'stable'
+      run: cargo fmt --all -- --check
       continue-on-error: ${{ matrix.can-fail }}
-#     - name: Test serde feature
-#       run: cargo test --lib --features serde -- --nocapture --test-threads 1
-#       continue-on-error: ${{ matrix.can-fail }}
-#     - name: Test all features
-#       run: cargo test --all-features -- --nocapture --test-threads 1
-#       continue-on-error: ${{ matrix.can-fail }}
-#     - name: Test Packaging
-#       if: matrix.rust == 'stable'
-#       run: cargo package
-#       continue-on-error: ${{ matrix.can-fail }}
+    - name: Clippy
+      run: cargo clippy -- -D clippy::all
+      continue-on-error: ${{ matrix.can-fail }}
+      
+    - name: Build feature crosterm-backend
+      run: cargo build --no-default-features --features="crossterm-backend"
+      continue-on-error: ${{ matrix.can-fail }}            
+    - name: Build feature termion-backend
+      if: matrix.os != 'windows-2019'
+      run: cargo build --no-default-features --features="termion-backend"
+      continue-on-error: ${{ matrix.can-fail }}
+      
+    - name: Build feature crosterm-backend
+      run: cargo test --no-default-features --features="crossterm-backend"
+      continue-on-error: ${{ matrix.can-fail }}            
+    - name: Build feature termion-backend
+      if: matrix.os != 'windows-2019'
+      run: cargo text --no-default-features --features="termion-backend"
+      continue-on-error: ${{ matrix.can-fail }}
+    
+    - name: Test Packaging
+      if: matrix.rust == 'stable'
+      run: cargo package
+      continue-on-error: ${{ matrix.can-fail }}
