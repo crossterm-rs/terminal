@@ -109,7 +109,9 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
 
 impl<W: Write> Drop for BackendImpl<W> {
     fn drop(&mut self) {
-        io::stdout().execute(terminal::LeaveAlternateScreen).unwrap();
+        io::stdout()
+            .execute(terminal::LeaveAlternateScreen)
+            .unwrap();
         disable_raw_mode().unwrap();
         io::stdout().execute(event::DisableMouseCapture).unwrap();
     }
