@@ -87,7 +87,7 @@ features = ["your_backend_choice"]
 <p></p>
  
 ```rust
-use terminal_adapter::{ClearType, Action, Value, Result, error};
+use terminal_adapter::{ClearType, Action, Value, Retreived, error};
 
 pub fn main() -> error::Result<()> {
     let terminal = terminal_adapter::stdout();
@@ -104,7 +104,7 @@ pub fn main() -> error::Result<()> {
     terminal.flush_batch();
 
     // get an terminal-adapter value.
-    if let Result::TerminalSize(x, y) = terminal.get(Value::TerminalSize)? {
+    if let Retreived::TerminalSize(x, y) = terminal.get(Value::TerminalSize)? {
         println!("x: {}, y: {}", x, y);
     }
 

@@ -21,6 +21,7 @@ features = ["crossterm-backend"]
 # Features
 #
 [features]
+default = ["crossterm-backend"]
 termion-backend = ["termion", "signal-hook", "libc", "crossbeam-channel"]
 crossterm-backend = ["crossterm"]
 

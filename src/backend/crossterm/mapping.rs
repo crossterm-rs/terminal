@@ -123,7 +123,7 @@ impl From<event::KeyModifiers> for KeyModifiers {
             modifiers |= KeyModifiers::ALT;
         }
 
-        return modifiers;
+        modifiers
     }
 }
 

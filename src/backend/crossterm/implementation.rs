@@ -16,7 +16,7 @@ pub struct BackendImpl<W: Write> {
 
 impl<W: Write> BackendImpl<W> {
     fn map_error<E>(&self, result: crossterm::Result<E>) -> error::Result<()> {
-        if let Ok(_) = result {
+        if result.is_ok() {
             Ok(())
         } else {
             Err(ErrorKind::FlushingBatchFailed)
@@ -109,8 +109,8 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
 
 impl<W: Write> Drop for BackendImpl<W> {
     fn drop(&mut self) {
-        let _ = io::stdout().execute(terminal::LeaveAlternateScreen);
-        let _ = disable_raw_mode().unwrap();
-        let _ = io::stdout().execute(event::DisableMouseCapture);
+        io::stdout().execute(terminal::LeaveAlternateScreen).unwrap();
+        disable_raw_mode().unwrap();
+        io::stdout().execute(event::DisableMouseCapture).unwrap();
     }
 }
