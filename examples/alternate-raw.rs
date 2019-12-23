@@ -1,6 +1,8 @@
 use std::io::Write;
 
-use terminal_adapter::{stdout, Action, Clear, Event, KeyCode, KeyEvent, Result, TerminalLock, Value};
+use terminal_adapter::{
+    stdout, Action, Clear, Event, KeyCode, KeyEvent, Retrieved, TerminalLock, Value,
+};
 
 fn main() {
     let terminal = stdout();
@@ -16,7 +18,7 @@ fn main() {
     lock.flush_batch().unwrap();
 
     loop {
-        if let Result::Event(Some(Event::Key(key))) = lock.get(Value::Event(None)).unwrap() {
+        if let Retrieved::Event(Some(Event::Key(key))) = lock.get(Value::Event(None)).unwrap() {
             match key {
                 KeyEvent {
                     code: KeyCode::Char('q'),

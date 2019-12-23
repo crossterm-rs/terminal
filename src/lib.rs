@@ -1,16 +1,16 @@
 #![deny(unused_imports, unused_must_use)]
 
 pub use self::{
-    action::{Action, Result, Value},
+    action::{Action, Retrieved, Value},
     enums::{
-        Attribute, Clear, Color, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton,
-        MouseEvent,
+        Attribute, Clear, Color, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent,
     },
     terminal::{stderr, stdout, Terminal, TerminalLock},
 };
 
+pub mod error;
+
 pub(crate) mod action;
 pub(crate) mod backend;
 pub(crate) mod enums;
-pub mod error;
 pub(crate) mod terminal;

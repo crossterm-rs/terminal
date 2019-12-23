@@ -8,7 +8,7 @@ use bitflags::_core::cell::RefMut;
 
 use crate::{
     backend::{Backend as _, BackendImpl},
-    error, Action, Result, Value,
+    error, Action, Retrieved, Value,
 };
 
 /// Creates a [Stdout](https://doc.rust-lang.org/std/io/struct.Stdout.html) buffered [Terminal](struct.Terminal.html).
@@ -27,7 +27,7 @@ pub fn stderr() -> Terminal<Stderr> {
 /// # Examples
 ///
 /// ```rust
-/// use terminal_adapter::{Clear, Action, Value, Result, error};
+/// use terminal_adapter::{Clear, Action, Value, Retrieved, error};
 ///
 /// pub fn main() -> error::Result<()> {
 ///     let terminal = terminal_adapter::stdout();
@@ -44,7 +44,7 @@ pub fn stderr() -> Terminal<Stderr> {
 ///     terminal.flush_batch();
 ///
 ///     // get an terminal-adapter value.
-///     if let Result::TerminalSize(x, y) = terminal.get(Value::TerminalSize)? {
+///     if let Retrieved::TerminalSize(x, y) = terminal.get(Value::TerminalSize)? {
 ///         println!("x: {}, y: {}", x, y);
 ///     }
 ///
@@ -102,7 +102,7 @@ impl<W: Write> Terminal<W> {
     }
 
     /// Batches an action for later execution.
-    /// You can flush/execute the batched action with [batch](struct.Terminal.html#method.flush_batch).
+    /// You can flush/execute the batched actions with [batch](struct.Terminal.html#method.flush_batch).
     ///
     /// # Note
     ///
@@ -113,7 +113,7 @@ impl<W: Write> Terminal<W> {
         lock.batch(action)
     }
 
-    /// Flushes the batched actions, this performs the actions in the batched order.
+    /// Flushes the batched actions, this executes the actions in the order that they were batched.
     /// You can batch an action with [batch](struct.Terminal.html#method.batch).
     ///
     /// # Note
@@ -126,7 +126,7 @@ impl<W: Write> Terminal<W> {
     }
 
     /// Gets an value from the terminal.
-    pub fn get(&self, value: Value) -> error::Result<Result> {
+    pub fn get(&self, value: Value) -> error::Result<Retrieved> {
         let lock = self.lock_mut()?;
         lock.get(value)
     }
@@ -180,7 +180,7 @@ impl<'a, W: Write> TerminalLock<'a, W> {
     }
 
     /// See [Terminal::get](struct.Terminal.html#method.get).
-    pub fn get(&self, value: Value) -> error::Result<Result> {
+    pub fn get(&self, value: Value) -> error::Result<Retrieved> {
         self.backend.get(value)
     }
 }

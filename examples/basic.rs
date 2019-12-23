@@ -1,6 +1,6 @@
 use std::{fs::File, thread, time::Duration};
 
-use terminal_adapter::{error, stderr, stdout, Action, Clear, Result, Terminal, Value};
+use terminal_adapter::{error, stderr, stdout, Action, Clear, Retrieved, Terminal, Value};
 
 fn different_buffers() {
     let _stdout = stdout();
@@ -12,16 +12,16 @@ fn different_buffers() {
 fn get_value() -> error::Result<()> {
     let stdout = stdout();
 
-    if let Result::CursorPosition(x, y) = stdout.get(Value::CursorPosition)? {
+    if let Retrieved::CursorPosition(x, y) = stdout.get(Value::CursorPosition)? {
         println!("X: {}, Y: {}", x, y);
     }
 
-    if let Result::TerminalSize(column, row) = stdout.get(Value::TerminalSize)? {
+    if let Retrieved::TerminalSize(column, row) = stdout.get(Value::TerminalSize)? {
         println!("columns: {}, rows: {}", column, row);
     }
 
     // see '/examples/event.rs'
-    if let Result::Event(event) = stdout.get(Value::Event(None))? {
+    if let Retrieved::Event(event) = stdout.get(Value::Event(None))? {
         println!("Event: {:?}\r", event);
     }
 

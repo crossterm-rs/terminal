@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::{error, Action, Result, Value};
+use crate::{error, Action, Retrieved, Value};
 
 #[cfg(feature = "crossterm-backend")]
 pub(crate) use self::crossterm::BackendImpl;
@@ -22,5 +22,5 @@ pub trait Backend<W: Write> {
     fn act(&mut self, action: Action, buffer: &mut W) -> error::Result<()>;
     fn batch(&mut self, action: Action, buffer: &mut W) -> error::Result<()>;
     fn flush_batch(&mut self, buffer: &mut W) -> error::Result<()>;
-    fn get(&self, retrieve_operation: Value) -> error::Result<Result>;
+    fn get(&self, retrieve_operation: Value) -> error::Result<Retrieved>;
 }

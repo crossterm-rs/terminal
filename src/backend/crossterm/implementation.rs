@@ -8,7 +8,7 @@ use crossterm::{
     ExecutableCommand, QueueableCommand,
 };
 
-use crate::{backend::Backend, error, error::ErrorKind, Action, Event, Result, Value};
+use crate::{backend::Backend, error, error::ErrorKind, Action, Event, Retrieved, Value};
 
 pub struct BackendImpl<W: Write> {
     _phantom: PhantomData<W>,
@@ -80,27 +80,27 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
         buffer.flush().map_err(|_| ErrorKind::FlushingBatchFailed)
     }
 
-    fn get(&self, retrieve_operation: Value) -> error::Result<Result> {
+    fn get(&self, retrieve_operation: Value) -> error::Result<Retrieved> {
         Ok(match retrieve_operation {
             Value::TerminalSize => {
                 let size = terminal::size()?;
-                Result::TerminalSize(size.0, size.1)
+                Retrieved::TerminalSize(size.0, size.1)
             }
             Value::CursorPosition => {
                 let position = cursor::position()?;
-                Result::CursorPosition(position.0, position.1)
+                Retrieved::CursorPosition(position.0, position.1)
             }
             Value::Event(duration) => {
                 if let Some(duration) = duration {
                     if event::poll(duration)? {
                         let event = event::read()?;
-                        Result::Event(Some(Event::from(event)))
+                        Retrieved::Event(Some(Event::from(event)))
                     } else {
-                        Result::Event(None)
+                        Retrieved::Event(None)
                     }
                 } else {
                     let event = event::read()?;
-                    Result::Event(Some(Event::from(event)))
+                    Retrieved::Event(Some(Event::from(event)))
                 }
             }
         })

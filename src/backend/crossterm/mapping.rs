@@ -3,8 +3,8 @@ use std::{error::Error, io};
 use crossterm::{event, style, terminal};
 
 use crate::{
-    error::ErrorKind, Attribute, Clear, Color, Event, KeyCode, KeyEvent, KeyModifiers,
-    MouseButton, MouseEvent,
+    error::ErrorKind, Attribute, Clear, Color, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton,
+    MouseEvent,
 };
 
 impl From<Attribute> for style::Attribute {
@@ -166,7 +166,7 @@ impl From<event::Event> for Event {
         match event {
             event::Event::Key(key) => Event::Key(KeyEvent::from(key)),
             event::Event::Mouse(mouse) => Event::Mouse(MouseEvent::from(mouse)),
-            event::Event::Resize(x, y) => Event::Resize,
+            event::Event::Resize(_x, _y) => Event::Resize,
         }
     }
 }

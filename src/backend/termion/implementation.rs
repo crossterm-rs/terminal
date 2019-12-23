@@ -20,7 +20,12 @@ use termion::{
     screen, style, terminal_size,
 };
 
-use crate::{backend::{resize, termion::cursor::position, Backend}, error, error::ErrorKind, Action, Attribute, Color, Event, Result, Value, Clear};
+use crate::{
+    backend::{resize, termion::cursor::position, Backend},
+    error,
+    error::ErrorKind,
+    Action, Attribute, Clear, Color, Event, Retrieved, Value,
+};
 
 /// A sequence of escape codes to enable terminal mouse support.
 /// We use this directly instead of using `MouseTerminal` from termion.
@@ -201,14 +206,14 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             }
             Action::HideCursor => self.w_display(&cursor::Hide, buffer)?,
             Action::ShowCursor => self.w_display(&cursor::Show, buffer)?,
-            Action::ClearTerminal(clear_type) => {
-                match clear_type {
-                    Clear::All => {self.w_display(&clear::All, buffer)?;},
-                    Clear::FromCursorDown => self.w_display(&clear::AfterCursor, buffer)?,
-                    Clear::FromCursorUp => self.w_display(&clear::BeforeCursor, buffer)?,
-                    Clear::CurrentLine => self.w_display(&clear::CurrentLine, buffer)?,
-                    Clear::UntilNewLine => self.w_display(&clear::UntilNewline, buffer)?,
+            Action::ClearTerminal(clear_type) => match clear_type {
+                Clear::All => {
+                    self.w_display(&clear::All, buffer)?;
                 }
+                Clear::FromCursorDown => self.w_display(&clear::AfterCursor, buffer)?,
+                Clear::FromCursorUp => self.w_display(&clear::BeforeCursor, buffer)?,
+                Clear::CurrentLine => self.w_display(&clear::CurrentLine, buffer)?,
+                Clear::UntilNewLine => self.w_display(&clear::UntilNewline, buffer)?,
             },
             Action::EnterAlternateScreen => self.w_display(&screen::ToAlternateScreen, buffer)?,
             Action::LeaveAlternateScreen => self.w_display(&screen::ToMainScreen, buffer)?,
@@ -248,11 +253,11 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
         buffer.flush().map_err(|_| ErrorKind::FlushingBatchFailed)
     }
 
-    fn get(&self, retrieve_operation: Value) -> error::Result<Result> {
+    fn get(&self, retrieve_operation: Value) -> error::Result<Retrieved> {
         Ok(match retrieve_operation {
             Value::TerminalSize => {
                 let size = terminal_size()?;
-                Result::TerminalSize(size.0, size.1)
+                Retrieved::TerminalSize(size.0, size.1)
             }
             Value::CursorPosition => {
                 // if raw mode is disabled, we need to enable and disable it.
@@ -264,7 +269,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                     position()?
                 };
 
-                Result::CursorPosition(x, y)
+                Retrieved::CursorPosition(x, y)
             }
             Value::Event(duration) => {
                 if let Some(ref input_receiver) = self.input_receiver {
@@ -281,13 +286,13 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                                recv(resize_receiver) -> _ => Some(Event::Resize),
                             }
                         };
-                        return Ok(event.map_or(Result::Event(None), |event| {
-                            Result::Event(Some(Event::from(event)))
+                        return Ok(event.map_or(Retrieved::Event(None), |event| {
+                            Retrieved::Event(Some(Event::from(event)))
                         }));
                     };
                 };
 
-                Result::Event(None)
+                Retrieved::Event(None)
             }
         })
     }

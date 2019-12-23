@@ -1,6 +1,6 @@
 use bitflags::_core::time::Duration;
 
-use terminal_adapter::{stdout, Action, Event, KeyCode, KeyEvent, Result, Value};
+use terminal_adapter::{stdout, Action, Event, KeyCode, KeyEvent, Retrieved, Value};
 
 fn main() {
     with_duration_read();
@@ -13,7 +13,7 @@ fn block_read() {
     terminal.act(Action::EnableRawMode);
 
     loop {
-        if let Result::Event(event) = terminal.get(Value::Event(None)).unwrap() {
+        if let Retrieved::Event(event) = terminal.get(Value::Event(None)).unwrap() {
             match event {
                 Some(Event::Key(KeyEvent {
                     code: KeyCode::Esc, ..
@@ -37,7 +37,7 @@ fn with_duration_read() {
     terminal.act(Action::EnableMouseCapture);
 
     loop {
-        if let Result::Event(event) = terminal
+        if let Retrieved::Event(event) = terminal
             .get(Value::Event(Some(Duration::from_millis(500))))
             .unwrap()
         {
