@@ -61,7 +61,7 @@ Use **one** of the below feature flags to choose an backend.
 
 _like_
 ```toml
-[dependencies.terminal-adapter]
+[dependencies.terminal]
 version = "0.1"
 features = ["crossterm-backend"] 
 ```
@@ -79,7 +79,7 @@ Click to show Cargo.toml.
 
 ```toml
 [dependencies]
-terminal-adapter = "0.1"
+terminal = "0.1"
 features = ["your_backend_choice"] 
 ```
 
@@ -114,8 +114,8 @@ pub fn main() -> error::Result<()> {
 
 ### Other Resources
 
-- [API documentation](https://docs.rs/terminal-adapter/)
-- [Examples repository](https://github.com/terminal-adapter/examples)
+- [API documentation](https://docs.rs/terminal/)
+- [Examples repository](https://github.com/crossterm-rs/terminal/examples)
 - [Backend Specification](docs/backend-specification.md)
 
 ## Contributing
@@ -130,25 +130,25 @@ read the [Contributing](docs/CONTRIBUTING.md) guidelines.
 ## License
 
 This project, `terminal` are licensed under the MIT
-License - see the [LICENSE](https://github.com/terminal-adapter/blob/master/LICENSE) file for details.
+License - see the [LICENSE](https://github.com/crossterm-rs/terminal/blob/master/LICENSE) file for details.
 
-[s1]: https://img.shields.io/crates/v/terminal-adapter.svg
-[l1]: https://crates.io/crates/terminal-adapter
+[s1]: https://img.shields.io/crates/v/terminal.svg
+[l1]: https://crates.io/crates/terminal
 
 [s2]: https://img.shields.io/badge/license-MIT-blue.svg
-[l2]: terminal-adapter/LICENSE
+[l2]: terminal/LICENSE
 
-[s3]: https://docs.rs/terminal-adapter/badge.svg
-[l3]: https://docs.rs/terminal-adapter/
+[s3]: https://docs.rs/terminal/badge.svg
+[l3]: https://docs.rs/terminal/
 
-[s3]: https://docs.rs/terminal-adapter/badge.svg
-[l3]: https://docs.rs/terminal-adapter/
+[s3]: https://docs.rs/terminal/badge.svg
+[l3]: https://docs.rs/terminal/
 
 [s5]: https://img.shields.io/discord/560857607196377088.svg?logo=discord
 [l5]: https://discord.gg/K4nyTDB
 
-[s6]: https://tokei.rs/b1/github/terminal-adapter/?category=code
-[s7]: https://travis-ci.org/terminal-adapter/.svg?branch=master
+[s6]: https://tokei.rs/b1/github/crossterm-rs/terminal/?category=code
+[s7]: https://travis-ci.org/terminal/.svg?branch=master
 
 [termion]: https://crates.io/crates/termion
 [crossterm]: https://crates.io/crates/crossterm
