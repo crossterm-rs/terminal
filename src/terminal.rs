@@ -197,11 +197,24 @@ impl<'a, W: Write> Write for TerminalLock<'a, W> {
 
 #[cfg(test)]
 mod test {
-    use crate::stdout;
+    use crate::Terminal;
+    use std::io::{Error, Write};
+
+    struct BufferStub;
+
+    impl Write for BufferStub {
+        fn write(&mut self, _buf: &[u8]) -> Result<usize, Error> {
+            Ok(0)
+        }
+
+        fn flush(&mut self) -> Result<(), Error> {
+            Ok(())
+        }
+    }
 
     #[test]
     fn test_acquiring_mutable_lock_twice_should_error() {
-        let stdout = stdout();
+        let stdout = Terminal::custom(BufferStub);
 
         let lock1 = stdout.lock_mut();
         let lock2 = stdout.lock_mut();
