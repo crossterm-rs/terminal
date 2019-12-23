@@ -11,19 +11,48 @@ use crate::{
     error, Action, Result, Value,
 };
 
-/// Creates a `stdout` buffered terminal.
+/// Creates a [Stdout](https://doc.rust-lang.org/std/io/struct.Stdout.html) buffered [Terminal](struct.Terminal.html).
 pub fn stdout() -> Terminal<Stdout> {
     Terminal::custom(io::stdout())
 }
 
-/// Creates a `stderr` buffered terminal.
+/// Creates a [Stderr](https://doc.rust-lang.org/std/io/struct.Stdout.html) buffered [Terminal](struct.Terminal.html).
 pub fn stderr() -> Terminal<Stderr> {
     Terminal::custom(io::stderr())
 }
 
 /// A simple interface to perform operations on the terminal.
-/// With this interface, actions can be taken and patched out.
 /// It also allows terminal values to be queried.
+///
+/// # Examples
+///
+/// ```rust
+/// use terminal_adapter::{ClearType, Action, Value, Result, error};
+///
+/// pub fn main() -> error::Result<()> {
+///     let terminal = terminal_adapter::stdout();
+///
+///     // perform an single action.
+///     terminal.act(Action::ClearTerminal(ClearType::All))?;
+///
+///     // batch multiple actions.
+///     for i in 0..100 {
+///         terminal.batch(Action::MoveCursorTo(0, i))?;
+///     }
+///
+///     // execute batch.
+///     terminal.flush_batch();
+///
+///     // get an terminal-adapter value.
+///     if let Result::TerminalSize(x, y) = terminal.get(Value::TerminalSize)? {
+///         println!("x: {}, y: {}", x, y);
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// # Notes
 pub struct Terminal<W: Write> {
     // Access to the `Terminal` internals is ONLY allowed if this lock is acquired,
     // use `lock_mut()`.
@@ -35,7 +64,7 @@ pub struct Terminal<W: Write> {
 }
 
 impl<W: Write> Terminal<W> {
-    /// Creates a custom buffered terminal with the given buffer.
+    /// Creates a custom buffered [Terminal](struct.Terminal.html) with the given buffer.
     pub fn custom(buffer: W) -> Terminal<W> {
         Terminal {
             lock: RwLock::new(()),
@@ -44,8 +73,8 @@ impl<W: Write> Terminal<W> {
         }
     }
 
-    /// Locks this `Terminal`, returning a mutable lock guard.
-    /// A deadlock is not possible but an error will be returned if a lock is already in use.
+    /// Locks this [Terminal](struct.Terminal.html), returning a mutable lock guard.
+    /// A deadlock is not possible, instead an error will be returned if a lock is already in use.
     /// Make sure this lock is only used at one place.
     /// The lock is released when the returned lock goes out of scope.
     pub fn lock_mut(&self) -> error::Result<TerminalLock<'_, W>> {
@@ -66,31 +95,31 @@ impl<W: Write> Terminal<W> {
     /// # Note
     ///
     /// Acquires an lock for underlying mutability,
-    /// this can be prevented with [lock_mut()](TODO).
+    /// this can be prevented with [lock_mut](struct.Terminal.html#method.lock_mut).
     pub fn act(&self, action: Action) -> error::Result<()> {
         let mut lock = self.lock_mut()?;
         lock.act(action)
     }
 
     /// Batches an action for later execution.
-    /// You can flush/execute an action with [batch](TODO).
+    /// You can flush/execute the batched action with [batch](struct.Terminal.html#method.flush_batch).
     ///
     /// # Note
     ///
     /// Acquires an lock for underlying mutability,
-    /// this can be prevented with [lock_mut()](TODO).
+    /// this can be prevented with [lock_mut](struct.Terminal.html#method.lock_mut).
     pub fn batch(&self, action: Action) -> error::Result<()> {
         let mut lock = self.lock_mut()?;
         lock.batch(action)
     }
 
     /// Flushes the batched actions, this performs the actions in the batched order.
-    /// You can batch an action with [batch](TODO).
+    /// You can batch an action with [batch](struct.Terminal.html#method.batch).
     ///
     /// # Note
     ///
     /// Acquires an lock for underlying mutability,
-    /// this can be prevented with [lock_mut()](TODO).
+    /// this can be prevented with [lock_mut](struct.Terminal.html#method.lock_mut).
     pub fn flush_batch(&self) -> error::Result<()> {
         let mut lock = self.lock_mut()?;
         lock.flush_batch()
@@ -115,7 +144,7 @@ impl<'a, W: Write> Write for Terminal<W> {
     }
 }
 
-/// A mutable lock to the [Terminal](TODO).
+/// A mutable lock to the [Terminal](struct.Terminal.html).
 pub struct TerminalLock<'a, W: Write> {
     _lock: RwLockWriteGuard<'a, ()>,
     buffer: RefMut<'a, W>,
@@ -135,22 +164,22 @@ impl<'a, W: Write> TerminalLock<'a, W> {
         }
     }
 
-    /// See [Terminal::act()](TODO).
+    /// See [Terminal::act](struct.Terminal.html#method.act).
     pub fn act(&mut self, action: Action) -> error::Result<()> {
         self.backend.act(action, &mut self.buffer)
     }
 
-    /// See [Terminal::batch()](TODO).
+    /// See [Terminal::batch](struct.Terminal.html#method.batch).
     pub fn batch(&mut self, action: Action) -> error::Result<()> {
         self.backend.batch(action, &mut self.buffer)
     }
 
-    /// See [Terminal::flush_batch()](TODO).
+    /// See [Terminal::flush_batch](struct.Terminal.html#method.flush_batch).
     pub fn flush_batch(&mut self) -> error::Result<()> {
         self.backend.flush_batch(&mut self.buffer)
     }
 
-    /// See [Terminal::get()](TODO).
+    /// See [Terminal::get](struct.Terminal.html#method.get).
     pub fn get(&self, value: Value) -> error::Result<Result> {
         self.backend.get(value)
     }

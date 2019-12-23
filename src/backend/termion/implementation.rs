@@ -20,12 +20,7 @@ use termion::{
     screen, style, terminal_size,
 };
 
-use crate::{
-    backend::{resize, termion::cursor::position, Backend},
-    error,
-    error::ErrorKind,
-    Action, Attribute, Color, Event, Result, Value,
-};
+use crate::{backend::{resize, termion::cursor::position, Backend}, error, error::ErrorKind, Action, Attribute, Color, Event, Result, Value, ClearType};
 
 /// A sequence of escape codes to enable terminal mouse support.
 /// We use this directly instead of using `MouseTerminal` from termion.
@@ -206,7 +201,15 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             }
             Action::HideCursor => self.w_display(&cursor::Hide, buffer)?,
             Action::ShowCursor => self.w_display(&cursor::Show, buffer)?,
-            Action::ClearTerminal(clear_type) => self.w_display(&clear::All, buffer)?,
+            Action::ClearTerminal(clear_type) => {
+                match clear_type {
+                    ClearType::All => {self.w_display(&clear::All, buffer)?;},
+                    ClearType::FromCursorDown => self.w_display(&clear::AfterCursor, buffer)?,
+                    ClearType::FromCursorUp => self.w_display(&clear::BeforeCursor, buffer)?,
+                    ClearType::CurrentLine => self.w_display(&clear::CurrentLine, buffer)?,
+                    ClearType::UntilNewLine => self.w_display(&clear::UntilNewline, buffer)?,
+                }
+            },
             Action::EnterAlternateScreen => self.w_display(&screen::ToAlternateScreen, buffer)?,
             Action::LeaveAlternateScreen => self.w_display(&screen::ToMainScreen, buffer)?,
             Action::SetForegroundColor(color) => self.f_color(color, true, buffer)?,
@@ -221,7 +224,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                 self.is_raw_mode_enabled = true;
             }
             Action::DisableRawMode => {
-                if let Some(raw) = &self.buffer {
+                if let Some(_) = &self.buffer {
                     self.buffer = None;
                     self.is_raw_mode_enabled = false;
                 }
@@ -257,7 +260,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                 let (x, y) = if self.is_raw_mode_enabled {
                     position()?
                 } else {
-                    let mut tty = get_tty()?.into_raw_mode()?;
+                    get_tty()?.into_raw_mode()?;
                     position()?
                 };
 
@@ -269,13 +272,13 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                         let event = if let Some(duration) = duration {
                             select! {
                                recv(input_receiver) -> event => event.ok(),
-                               recv(resize_receiver) -> _ => Some(Event::Resize(0,0)),
+                               recv(resize_receiver) -> _ => Some(Event::Resize),
                                default(duration) => None,
                             }
                         } else {
                             select! {
                                recv(input_receiver) -> event => event.ok(),
-                               recv(resize_receiver) -> event => Some(Event::Resize(0,0)),
+                               recv(resize_receiver) -> _ => Some(Event::Resize),
                             }
                         };
                         return Ok(event.map_or(Result::Event(None), |event| {

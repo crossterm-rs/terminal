@@ -1,6 +1,6 @@
 use std::{fs::File, thread, time::Duration};
 
-use terminal::{error, stderr, stdout, Action, ClearType, Result, Terminal, Value};
+use terminal_adapter::{error, stderr, stdout, Action, ClearType, Result, Terminal, Value};
 
 fn different_buffers() {
     let _stdout = stdout();
@@ -8,7 +8,7 @@ fn different_buffers() {
     let _file = Terminal::custom(File::create("./test.txt").unwrap());
 }
 
-/// Gets values from the terminal.
+/// Gets values from the terminal-adapter.
 fn get_value() -> error::Result<()> {
     let stdout = stdout();
 
@@ -65,5 +65,5 @@ fn lock_terminal() -> error::Result<()> {
 }
 
 fn main() {
-    a::main();
+    get_value().unwrap();
 }

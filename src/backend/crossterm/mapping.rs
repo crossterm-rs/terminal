@@ -166,7 +166,7 @@ impl From<event::Event> for Event {
         match event {
             event::Event::Key(key) => Event::Key(KeyEvent::from(key)),
             event::Event::Mouse(mouse) => Event::Mouse(MouseEvent::from(mouse)),
-            event::Event::Resize(x, y) => Event::Resize(x, y),
+            event::Event::Resize(x, y) => Event::Resize,
         }
     }
 }

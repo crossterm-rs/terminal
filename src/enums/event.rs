@@ -9,7 +9,7 @@ pub enum Event {
     /// A singe mouse event with additional pressed modifiers.
     Mouse(MouseEvent),
     /// An resize event with new dimensions after resize (columns, rows).
-    Resize(u16, u16),
+    Resize,
     /// An event was not supported by the backend.
     Unknown,
 }

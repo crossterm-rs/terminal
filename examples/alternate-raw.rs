@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use terminal::{stdout, Action, ClearType, Event, KeyCode, KeyEvent, Result, TerminalLock, Value};
+use terminal_adapter::{stdout, Action, ClearType, Event, KeyCode, KeyEvent, Result, TerminalLock, Value};
 
 fn main() {
     let terminal = stdout();

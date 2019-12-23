@@ -1,8 +1,15 @@
 [package]
-name = "terminal"
+name = "terminal-adapter"
 version = "0.1.0"
-authors = ["Timon Post <timonpost@hotmail.nl>"]
+authors = ["Timon Post"]
 edition = "2018"
+repository = "https://github.com/crossterm-rs/terminal-adapter"
+documentation = "https://docs.rs/terminal-adapter/"
+license = "MIT"
+keywords = ["console", "cli", "tty", "terminal"]
+exclude = ["target", "Cargo.lock"]
+readme = "README.md"
+categories = ["command-line-interface", "command-line-utilities"]
 
 [features]
 termion-backend = ["termion", "signal-hook", "libc", "crossbeam-channel"]
@@ -17,7 +24,7 @@ optional = true
 version = "0.14"
 
 [dependencies]
-bitflags="1.2.1"
+bitflags = "1.2.1"
 lazy_static = "1.4.0"
 
 [target.'cfg(unix)'.dependencies]

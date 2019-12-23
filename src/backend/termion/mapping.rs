@@ -85,7 +85,6 @@ impl From<event::Key> for KeyEvent {
             }
 
             Key::__IsNotComplete => KeyCode::Tab.into(),
-            _ => unimplemented!(),
         }
     }
 }

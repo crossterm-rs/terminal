@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use terminal::{error, stdout, Action, ClearType, Color, TerminalLock};
+use terminal_adapter::{error, stdout, Action, ClearType, Color, TerminalLock};
 
 fn test_color_values_matrix_16x16<W, F>(
     w: &mut TerminalLock<W>,
