@@ -53,9 +53,9 @@ jobs:
 #       continue-on-error: ${{ matrix.can-fail }}
     - name: Test default features
       run: | 
-        cargo test --lib -- --nocapture --no-default-features --features="crossterm-backend" --test-threads 1
+        cargo test --lib --no-default-features --features="crossterm-backend" -- --nocapture --test-threads 1
         if: matrix.os != 'windows-2019'
-        cargo test --lib -- --nocapture --no-default-features --features="termion-backend" --test-threads 1
+        cargo test --lib --no-default-features --features="termion-backend" -- --nocapture --test-threads 1
       continue-on-error: ${{ matrix.can-fail }}
 #     - name: Test serde feature
 #       run: cargo test --lib --features serde -- --nocapture --test-threads 1
