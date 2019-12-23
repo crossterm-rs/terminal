@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use terminal_adapter::{
+use terminal::{
     stdout, Action, Clear, Event, KeyCode, KeyEvent, Retrieved, TerminalLock, Value,
 };
 

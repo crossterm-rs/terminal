@@ -103,7 +103,7 @@ pub fn main() -> error::Result<()> {
     // execute batch.
     terminal.flush_batch();
 
-    // get an terminal-adapter value.
+    // get an terminal value.
     if let Retreived::TerminalSize(x, y) = terminal.get(Value::TerminalSize)? {
         println!("x: {}, y: {}", x, y);
     }

@@ -1,6 +1,6 @@
 use bitflags::_core::time::Duration;
 
-use terminal_adapter::{error, stdout, Action, Event, KeyCode, KeyEvent, Retrieved, Value};
+use terminal::{error, stdout, Action, Event, KeyCode, KeyEvent, Retrieved, Value};
 
 fn main() {
     with_duration_read();

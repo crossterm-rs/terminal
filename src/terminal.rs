@@ -27,10 +27,10 @@ pub fn stderr() -> Terminal<Stderr> {
 /// # Examples
 ///
 /// ```no_run
-/// use terminal_adapter::{Clear, Action, Value, Retrieved, error};
+/// use terminal::{Clear, Action, Value, Retrieved, error};
 ///
 /// pub fn main() -> error::Result<()> {
-///     let terminal = terminal_adapter::stdout();
+///     let terminal = terminal::stdout();
 ///
 ///     // perform an single action.
 ///     terminal.act(Action::ClearTerminal(Clear::All))?;
@@ -43,7 +43,7 @@ pub fn stderr() -> Terminal<Stderr> {
 ///     // execute batch.
 ///     terminal.flush_batch();
 ///
-///     // get an terminal-adapter value.
+///     // get an terminal value.
 ///     if let Retrieved::TerminalSize(x, y) = terminal.get(Value::TerminalSize)? {
 ///         println!("x: {}, y: {}", x, y);
 ///     }

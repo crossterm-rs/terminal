@@ -1,6 +1,6 @@
 [package]
-name = "terminal-adapter"
-version = "0.1.0"
+name = "terminal"
+version = "0.4.0"
 authors = ["Timon Post"]
 edition = "2018"
 repository = "https://github.com/crossterm-rs/terminal-adapter"
