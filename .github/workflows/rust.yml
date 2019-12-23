@@ -62,7 +62,7 @@ jobs:
       continue-on-error: ${{ matrix.can-fail }}            
     - name: Test with feature termion-backend
       if: matrix.os != 'windows-2019'
-      run: cargo text --no-default-features --features="termion-backend"
+      run: cargo test --no-default-features --features="termion-backend"
       continue-on-error: ${{ matrix.can-fail }}
     
     - name: Test Packaging
