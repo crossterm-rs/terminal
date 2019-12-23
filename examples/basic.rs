@@ -49,7 +49,7 @@ fn batch_actions() -> error::Result<()> {
 fn lock_terminal() -> error::Result<()> {
     let terminal = Terminal::custom(File::create("./test.txt").unwrap());
 
-    let mut lock = terminal.lock_mut().unwrap();
+    let mut lock = terminal.lock_mut()?;
 
     for i in 0..10000 {
         println!("{}", i);

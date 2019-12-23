@@ -26,7 +26,7 @@ pub fn stderr() -> Terminal<Stderr> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```no_run
 /// use terminal_adapter::{Clear, Action, Value, Retrieved, error};
 ///
 /// pub fn main() -> error::Result<()> {

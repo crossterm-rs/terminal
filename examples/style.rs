@@ -11,27 +11,27 @@ where
     W: Write,
     F: Fn(u16, u16) -> Color,
 {
-    w.batch(Action::ClearTerminal(Clear::All));
+    w.batch(Action::ClearTerminal(Clear::All))?;
 
     print!("{}", title);
 
     for idx in 0..=15 {
-        w.batch(Action::MoveCursorTo(1, idx + 4));
+        w.batch(Action::MoveCursorTo(1, idx + 4))?;
         print!("{}", format!("{:>width$}", idx, width = 2));
 
-        w.batch(Action::MoveCursorTo(idx * 3 + 3, 3));
+        w.batch(Action::MoveCursorTo(idx * 3 + 3, 3))?;
         print!("{}", format!("{:>width$}", idx, width = 3));
     }
 
     for row in 0..=15u16 {
-        w.batch(Action::MoveCursorTo(4, row + 4));
+        w.batch(Action::MoveCursorTo(4, row + 4))?;
 
         for col in 0..=15u16 {
-            w.batch(Action::SetForegroundColor(color(col, row)));
+            w.batch(Action::SetForegroundColor(color(col, row)))?;
             print!("███");
         }
 
-        w.batch(Action::SetForegroundColor(Color::White));
+        w.batch(Action::SetForegroundColor(Color::White))?;
         print!("{}", format!("{:>width$} ..= ", row * 16, width = 3));
         print!("{}", format!("{:>width$}", row * 16 + 15, width = 3));
     }
