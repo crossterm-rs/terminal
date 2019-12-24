@@ -1,13 +1,20 @@
 <h1 align="center"><img width="440" src="docs/terminal_full.png" /></h1>
 
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=Z8QK6XU749JB2) ![Travis][s7] [![Latest Version][s1]][l1] [![MIT][s2]][l2] [![docs][s3]][l3] ![Lines of Code][s6] [![Join us on Discord][s5]][l5]
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=Z8QK6XU749JB2) 
+[![Latest Version][crate-badge]][crate-link] 
+[![docs][docs-badge]][docs-link]
+![Lines of Code][loc-badge]
+[![MIT][license-badge]][license-link] 
+[![Join us on Discord][discord-badge]][discord-link]
+[![Stable Status][actions-stable-badge]][actions-link]
+[![Beta Status][actions-nightly-badge]][actions-link]
 
 # Unified API for different TUI libraries.
 
 This library offers a universal API over various terminal libraries such as 
 [termion][termion], [crossterm][crossterm], [ncurses][ncurses], [pancurses][pancurses] and [console][console]. 
 
-Why would I need this librarie? Three main reasons:
+Why would I need this library? Three main reasons:
 
 1) These libraries differ in the API.
  
@@ -132,23 +139,23 @@ read the [Contributing](docs/CONTRIBUTING.md) guidelines.
 This project, `terminal` are licensed under the MIT
 License - see the [LICENSE](https://github.com/crossterm-rs/terminal/blob/master/LICENSE) file for details.
 
-[s1]: https://img.shields.io/crates/v/terminal.svg
-[l1]: https://crates.io/crates/terminal
+[crate-badge]: https://img.shields.io/crates/v/terminal.svg
+[crate-link]: https://crates.io/crates/terminal
 
-[s2]: https://img.shields.io/badge/license-MIT-blue.svg
-[l2]: terminal/LICENSE
+[license-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[license-link]: terminal/LICENSE
 
-[s3]: https://docs.rs/terminal/badge.svg
-[l3]: https://docs.rs/terminal/
+[docs-badge]: https://docs.rs/terminal/badge.svg
+[docs-link]: https://docs.rs/terminal/
 
-[s3]: https://docs.rs/terminal/badge.svg
-[l3]: https://docs.rs/terminal/
+[discord-badge]: https://img.shields.io/discord/560857607196377088.svg?logo=discord
+[discord-link]: https://discord.gg/K4nyTDB
 
-[s5]: https://img.shields.io/discord/560857607196377088.svg?logo=discord
-[l5]: https://discord.gg/K4nyTDB
+[actions-link]: https://github.com/crossterm-rs/terminal/actions
+[actions-stable-badge]: https://github.com/crossterm-rs/terminal/workflows/Terminal%20Adapter%20Test/badge.svg
+[actions-nightly-badge]: https://github.com/crossterm-rs/terminal/workflows/Terminal%20Adapter%20Test/badge.svg
 
-[s6]: https://tokei.rs/b1/github/crossterm-rs/terminal/?category=code
-[s7]: https://travis-ci.org/terminal/.svg?branch=master
+[loc-badge]: https://tokei.rs/b1/github/crossterm-rs/terminal?category=code
 
 [termion]: https://crates.io/crates/termion
 [crossterm]: https://crates.io/crates/crossterm
