@@ -1,4 +1,4 @@
-<h1 align="center"><img width="440" src="docs/terminal_full.png" /></h1>
+<h1 align="center"><img width="550" src="docs/terminal_full.png" /></h1>
 
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=Z8QK6XU749JB2) 
 [![Latest Version][crate-badge]][crate-link] 
