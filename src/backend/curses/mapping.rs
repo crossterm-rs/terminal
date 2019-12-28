@@ -1,28 +1,21 @@
-use crate::{Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseButton, Color};
-use pancurses::{Input, mmask_t};
+use crate::{Color, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent};
+use pancurses::{mmask_t, Input};
 use std::io::Write;
-
 
 impl<W: Write> super::BackendImpl<W> {
     pub fn parse_next(&self, input: pancurses::Input) -> Event {
         /// Try to map the pancurses input event to an `KeyEvent` with possible modifiers.
-        let key_event =
-            self.try_parse_key(&input)
-                .map_or(
-                    self.try_parse_shift_key(&input)
-                        .map_or(
-                            self.try_parse_ctrl_key(&input)
-                                .map_or(
-                                    self.try_parse_ctrl_alt_key(&input),
-                                    |e| Some(e)),
-                            |e| Some(e)
-                        ), |e| Some(e)
-                );
+        let key_event = self.try_parse_key(&input).map_or(
+            self.try_parse_shift_key(&input).map_or(
+                self.try_parse_ctrl_key(&input)
+                    .map_or(self.try_parse_ctrl_alt_key(&input), |e| Some(e)),
+                |e| Some(e),
+            ),
+            |e| Some(e),
+        );
 
         match key_event {
-            Some(key_event) => {
-                Event::Key(key_event)
-            },
+            Some(key_event) => Event::Key(key_event),
             None => {
                 // TODO, if your event is not mapped, feel free to add it.
                 // Although other backends have to support it as well.
@@ -30,7 +23,7 @@ impl<W: Write> super::BackendImpl<W> {
 
                 self.try_parse_non_key_event(&input)
                     .map_or(Event::Unknown, |e| e)
-            },
+            }
         }
     }
 
@@ -66,7 +59,7 @@ impl<W: Write> super::BackendImpl<W> {
             &Input::KeyPPage => Some(KeyCode::PageUp),
             &Input::KeyEnter => Some(KeyCode::Enter),
             &Input::KeyEnd => Some(KeyCode::End),
-            _ => None
+            _ => None,
         };
 
         key_code.map(|e| KeyEvent::new(e, KeyModifiers::empty()))
@@ -88,7 +81,7 @@ impl<W: Write> super::BackendImpl<W> {
             &Input::KeySPrint => Some(KeyCode::End),
             &Input::KeySRight => Some(KeyCode::Right),
             &Input::KeyBTab => Some(KeyCode::BackTab),
-            _ => None
+            _ => None,
         };
 
         key_code.map(|e| KeyEvent::new(e, KeyModifiers::SHIFT))
@@ -98,7 +91,7 @@ impl<W: Write> super::BackendImpl<W> {
     pub fn try_parse_ctrl_key(&self, input: &pancurses::Input) -> Option<KeyEvent> {
         let key_code = match input {
             &Input::KeyCTab => Some(KeyCode::Tab),
-            _ => None
+            _ => None,
         };
 
         key_code.map(|e| KeyEvent::new(e, KeyModifiers::CONTROL))
@@ -108,7 +101,7 @@ impl<W: Write> super::BackendImpl<W> {
     pub fn try_parse_ctrl_alt_key(&self, input: &pancurses::Input) -> Option<KeyEvent> {
         let key_code = match input {
             &Input::KeyCATab => Some(KeyCode::Tab),
-            _ => None
+            _ => None,
         };
 
         key_code.map(|e| KeyEvent::new(e, KeyModifiers::CONTROL | KeyModifiers::ALT))
@@ -127,12 +120,8 @@ impl<W: Write> super::BackendImpl<W> {
                 }
                 Some(Event::Resize)
             }
-            &Input::KeyMouse => {
-                Some(self.parse_mouse_event())
-            }
-            _ => {
-                None
-            }
+            &Input::KeyMouse => Some(self.parse_mouse_event()),
+            _ => None,
         }
     }
 
@@ -158,9 +147,8 @@ impl<W: Write> super::BackendImpl<W> {
             modifiers |= KeyModifiers::ALT;
         }
 
-        mevent.bstate &= !(pancurses::BUTTON_SHIFT
-            | pancurses::BUTTON_ALT
-            | pancurses::BUTTON_CTRL) as mmask_t;
+        mevent.bstate &=
+            !(pancurses::BUTTON_SHIFT | pancurses::BUTTON_ALT | pancurses::BUTTON_CTRL) as mmask_t;
 
         let (x, y) = (mevent.x as u16, mevent.y as u16);
 
@@ -183,13 +171,19 @@ impl<W: Write> super::BackendImpl<W> {
                 bare_event ^= single_event;
 
                 // Process single_event
-                self.on_mouse_event(single_event, |e| {
-                    if event.is_none() {
-                        event = Some(e);
-                    } else {
-                        self.update_input_buffer(Event::Mouse(e));
-                    }
-                }, x, y, modifiers);
+                self.on_mouse_event(
+                    single_event,
+                    |e| {
+                        if event.is_none() {
+                            event = Some(e);
+                        } else {
+                            self.update_input_buffer(Event::Mouse(e));
+                        }
+                    },
+                    x,
+                    y,
+                    modifiers,
+                );
             }
 
             if let Some(event) = event {
@@ -212,9 +206,15 @@ impl<W: Write> super::BackendImpl<W> {
     /// the returned Vec will include those queued events.
     ///
     /// The main event is returned separately to avoid allocation in most cases.
-    fn on_mouse_event<F>(&self, bare_event: mmask_t, mut f: F, x: u16, y: u16, modifiers: KeyModifiers)
-        where
-            F: FnMut(MouseEvent),
+    fn on_mouse_event<F>(
+        &self,
+        bare_event: mmask_t,
+        mut f: F,
+        x: u16,
+        y: u16,
+        modifiers: KeyModifiers,
+    ) where
+        F: FnMut(MouseEvent),
     {
         let button = self.parse_mouse_button(bare_event);
         match bare_event {
@@ -291,7 +291,7 @@ impl<W: Write> super::BackendImpl<W> {
             | pancurses::BUTTON5_CLICKED
             | pancurses::BUTTON5_DOUBLE_CLICKED
             | pancurses::BUTTON5_TRIPLE_CLICKED => MouseButton::Unknown,
-            _ => MouseButton::Unknown
+            _ => MouseButton::Unknown,
         }
     }
 }
@@ -339,10 +339,9 @@ pub fn find_closest(color: Color, max_colors: i16) -> i16 {
             let b = if b > 127 { 1 } else { 0 };
             (r + 2 * g + 4 * b) as i16
         }
-        _ => { -1 } // default color
+        _ => -1, // default color
     }
 }
-
 
 //Input::KeyEvent => {},
 //Input::KeyMouse => {},
@@ -410,5 +409,3 @@ pub fn find_closest(color: Color, max_colors: i16) -> i16 {
 //Input::KeyB2 => {}
 //Input::KeyC1 => {}
 //Input::KeyC3 => {}
-
-

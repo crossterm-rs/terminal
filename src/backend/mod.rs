@@ -22,7 +22,6 @@ mod resize;
 #[cfg(feature = "pancurses-backend")]
 mod curses;
 
-
 /// Interface to an backend library.
 pub trait Backend<W: Write> {
     fn create() -> Self;

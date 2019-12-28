@@ -60,9 +60,9 @@ impl MouseEvent {
     /// Returns `None` if `self` is `WheelUp` or `WheelDown`.
     pub fn button(self) -> Option<MouseButton> {
         match self {
-            MouseEvent::Down(btn, ..)
-            | MouseEvent::Up(btn, ..)
-            | MouseEvent::Drag(btn, ..) => Some(btn),
+            MouseEvent::Down(btn, ..) | MouseEvent::Up(btn, ..) | MouseEvent::Drag(btn, ..) => {
+                Some(btn)
+            }
             _ => None,
         }
     }
