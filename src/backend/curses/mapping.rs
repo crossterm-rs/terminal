@@ -1,0 +1,414 @@
+use crate::{Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseButton, Color};
+use pancurses::{Input, mmask_t};
+use std::io::Write;
+
+
+impl<W: Write> super::BackendImpl<W> {
+    pub fn parse_next(&self, input: pancurses::Input) -> Event {
+        /// Try to map the pancurses input event to an `KeyEvent` with possible modifiers.
+        let key_event =
+            self.try_parse_key(&input)
+                .map_or(
+                    self.try_parse_shift_key(&input)
+                        .map_or(
+                            self.try_parse_ctrl_key(&input)
+                                .map_or(
+                                    self.try_parse_ctrl_alt_key(&input),
+                                    |e| Some(e)),
+                            |e| Some(e)
+                        ), |e| Some(e)
+                );
+
+        match key_event {
+            Some(key_event) => {
+                Event::Key(key_event)
+            },
+            None => {
+                // TODO, if your event is not mapped, feel free to add it.
+                // Although other backends have to support it as well.
+                // The point of this library is to support the most of the important keys.
+
+                self.try_parse_non_key_event(&input)
+                    .map_or(Event::Unknown, |e| e)
+            },
+        }
+    }
+
+    /// Matches on keys without modifiers, returns `None` if the key has modifiers or is not supported.
+    pub fn try_parse_key(&self, input: &pancurses::Input) -> Option<KeyEvent> {
+        let key_code = match input {
+            &Input::Character(c) => Some(KeyCode::Char(c)),
+            &Input::KeyDown => Some(KeyCode::Down),
+            &Input::KeyUp => Some(KeyCode::Up),
+            &Input::KeyLeft => Some(KeyCode::Left),
+            &Input::KeyRight => Some(KeyCode::Right),
+            &Input::KeyHome => Some(KeyCode::Home),
+            &Input::KeyBackspace => Some(KeyCode::Backspace),
+            &Input::KeyF0 => Some(KeyCode::F(0)),
+            &Input::KeyF1 => Some(KeyCode::F(1)),
+            &Input::KeyF2 => Some(KeyCode::F(2)),
+            &Input::KeyF3 => Some(KeyCode::F(3)),
+            &Input::KeyF4 => Some(KeyCode::F(4)),
+            &Input::KeyF5 => Some(KeyCode::F(5)),
+            &Input::KeyF6 => Some(KeyCode::F(6)),
+            &Input::KeyF7 => Some(KeyCode::F(7)),
+            &Input::KeyF8 => Some(KeyCode::F(8)),
+            &Input::KeyF9 => Some(KeyCode::F(9)),
+            &Input::KeyF10 => Some(KeyCode::F(10)),
+            &Input::KeyF11 => Some(KeyCode::F(11)),
+            &Input::KeyF12 => Some(KeyCode::F(12)),
+            &Input::KeyF13 => Some(KeyCode::F(13)),
+            &Input::KeyF14 => Some(KeyCode::F(14)),
+            &Input::KeyF15 => Some(KeyCode::F(15)),
+            &Input::KeyDL => Some(KeyCode::Delete),
+            &Input::KeyIC => Some(KeyCode::Insert),
+            &Input::KeyNPage => Some(KeyCode::PageDown),
+            &Input::KeyPPage => Some(KeyCode::PageUp),
+            &Input::KeyEnter => Some(KeyCode::Enter),
+            &Input::KeyEnd => Some(KeyCode::End),
+            _ => None
+        };
+
+        key_code.map(|e| KeyEvent::new(e, KeyModifiers::empty()))
+    }
+
+    /// Matches on shift keys, returns `None` if the key does not have an SHIFT modifier or is not supported.
+    pub fn try_parse_shift_key(&self, input: &pancurses::Input) -> Option<KeyEvent> {
+        let key_code = match input {
+            &Input::KeySF => Some(KeyCode::Down),
+            &Input::KeySR => Some(KeyCode::Up),
+            &Input::KeySTab => Some(KeyCode::Tab),
+            &Input::KeySDC => Some(KeyCode::Delete),
+            &Input::KeySEnd => Some(KeyCode::End),
+            &Input::KeySHome => Some(KeyCode::Home),
+            &Input::KeySIC => Some(KeyCode::Insert),
+            &Input::KeySLeft => Some(KeyCode::Left),
+            &Input::KeySNext => Some(KeyCode::PageDown),
+            &Input::KeySPrevious => Some(KeyCode::PageDown),
+            &Input::KeySPrint => Some(KeyCode::End),
+            &Input::KeySRight => Some(KeyCode::Right),
+            &Input::KeyBTab => Some(KeyCode::BackTab),
+            _ => None
+        };
+
+        key_code.map(|e| KeyEvent::new(e, KeyModifiers::SHIFT))
+    }
+
+    /// Matches on CTRL keys, returns `None` if the key does not have an CTRL modifier or is not supported.
+    pub fn try_parse_ctrl_key(&self, input: &pancurses::Input) -> Option<KeyEvent> {
+        let key_code = match input {
+            &Input::KeyCTab => Some(KeyCode::Tab),
+            _ => None
+        };
+
+        key_code.map(|e| KeyEvent::new(e, KeyModifiers::CONTROL))
+    }
+
+    /// Matches on CTRL + ALT keys, returns `None` if the key does not have an SHIFT + ALT modifier or is not supported.
+    pub fn try_parse_ctrl_alt_key(&self, input: &pancurses::Input) -> Option<KeyEvent> {
+        let key_code = match input {
+            &Input::KeyCATab => Some(KeyCode::Tab),
+            _ => None
+        };
+
+        key_code.map(|e| KeyEvent::new(e, KeyModifiers::CONTROL | KeyModifiers::ALT))
+    }
+
+    pub fn try_parse_non_key_event(&self, input: &pancurses::Input) -> Option<Event> {
+        // No key event, handle non key events e.g resize
+        match input {
+            &Input::KeyResize => {
+                // Let pancurses adjust their structures when the
+                // window is resized.
+                // Do it for Windows only, as 'resize_term' is not
+                // implemented for Unix
+                if cfg!(target_os = "windows") {
+                    pancurses::resize_term(0, 0);
+                }
+                Some(Event::Resize)
+            }
+            &Input::KeyMouse => {
+                Some(self.parse_mouse_event())
+            }
+            _ => {
+                None
+            }
+        }
+    }
+
+    fn parse_mouse_event(&self) -> Event {
+        let mut mevent = match pancurses::getmouse() {
+            Err(code) => return Event::Unknown,
+            Ok(event) => event,
+        };
+
+        let shift = (mevent.bstate & pancurses::BUTTON_SHIFT as mmask_t) != 0;
+        let alt = (mevent.bstate & pancurses::BUTTON_ALT as mmask_t) != 0;
+        let ctrl = (mevent.bstate & pancurses::BUTTON_CTRL as mmask_t) != 0;
+
+        let mut modifiers = KeyModifiers::empty();
+
+        if shift {
+            modifiers |= KeyModifiers::SHIFT;
+        }
+        if ctrl {
+            modifiers |= KeyModifiers::CONTROL;
+        }
+        if alt {
+            modifiers |= KeyModifiers::ALT;
+        }
+
+        mevent.bstate &= !(pancurses::BUTTON_SHIFT
+            | pancurses::BUTTON_ALT
+            | pancurses::BUTTON_CTRL) as mmask_t;
+
+        let (x, y) = (mevent.x as u16, mevent.y as u16);
+
+        if mevent.bstate == pancurses::REPORT_MOUSE_POSITION as mmask_t {
+            // The event is either a mouse drag event,
+            // or a weird double-release event. :S
+            self.get_last_btn()
+                .map(|btn| Event::Mouse(MouseEvent::Drag(btn, x, y, modifiers)))
+                .unwrap_or_else(|| {
+                    // We got a mouse drag, but no last mouse pressed?
+                    Event::Unknown
+                })
+        } else {
+            // Identify the button
+            let mut bare_event = mevent.bstate & ((1 << 25) - 1);
+
+            let mut event = None;
+            while bare_event != 0 {
+                let single_event = 1 << bare_event.trailing_zeros();
+                bare_event ^= single_event;
+
+                // Process single_event
+                self.on_mouse_event(single_event, |e| {
+                    if event.is_none() {
+                        event = Some(e);
+                    } else {
+                        self.update_input_buffer(Event::Mouse(e));
+                    }
+                }, x, y, modifiers);
+            }
+
+            if let Some(event) = event {
+                if let Some(btn) = event.button() {
+                    self.update_last_btn(btn);
+                }
+
+                Event::Mouse(event)
+            } else {
+                // No event parsed?...
+                Event::Unknown
+            }
+        }
+    }
+
+    /// Parse the given code into one or more event.
+    ///
+    /// If the given event code should expend into multiple events
+    /// (for instance click expends into PRESS + RELEASE),
+    /// the returned Vec will include those queued events.
+    ///
+    /// The main event is returned separately to avoid allocation in most cases.
+    fn on_mouse_event<F>(&self, bare_event: mmask_t, mut f: F, x: u16, y: u16, modifiers: KeyModifiers)
+        where
+            F: FnMut(MouseEvent),
+    {
+        let button = self.parse_mouse_button(bare_event);
+        match bare_event {
+            pancurses::BUTTON4_PRESSED => f(MouseEvent::ScrollUp(x, y, modifiers)),
+            pancurses::BUTTON5_PRESSED => f(MouseEvent::ScrollDown(x, y, modifiers)),
+            pancurses::BUTTON1_RELEASED
+            | pancurses::BUTTON2_RELEASED
+            | pancurses::BUTTON3_RELEASED
+            | pancurses::BUTTON4_RELEASED
+            | pancurses::BUTTON5_RELEASED => f(MouseEvent::Up(button, x, y, modifiers)),
+            pancurses::BUTTON1_PRESSED
+            | pancurses::BUTTON2_PRESSED
+            | pancurses::BUTTON3_PRESSED => f(MouseEvent::Down(button, x, y, modifiers)),
+            pancurses::BUTTON1_CLICKED
+            | pancurses::BUTTON2_CLICKED
+            | pancurses::BUTTON3_CLICKED
+            | pancurses::BUTTON4_CLICKED
+            | pancurses::BUTTON5_CLICKED => {
+                f(MouseEvent::Down(button, x, y, modifiers));
+                f(MouseEvent::Up(button, x, y, modifiers));
+            }
+            // Well, we disabled click detection
+            pancurses::BUTTON1_DOUBLE_CLICKED
+            | pancurses::BUTTON2_DOUBLE_CLICKED
+            | pancurses::BUTTON3_DOUBLE_CLICKED
+            | pancurses::BUTTON4_DOUBLE_CLICKED
+            | pancurses::BUTTON5_DOUBLE_CLICKED => {
+                for _ in 0..2 {
+                    f(MouseEvent::Down(button, x, y, modifiers));
+                    f(MouseEvent::Up(button, x, y, modifiers));
+                }
+            }
+            pancurses::BUTTON1_TRIPLE_CLICKED
+            | pancurses::BUTTON2_TRIPLE_CLICKED
+            | pancurses::BUTTON3_TRIPLE_CLICKED
+            | pancurses::BUTTON4_TRIPLE_CLICKED
+            | pancurses::BUTTON5_TRIPLE_CLICKED => {
+                for _ in 0..3 {
+                    f(MouseEvent::Down(button, x, y, modifiers));
+                    f(MouseEvent::Up(button, x, y, modifiers));
+                }
+            }
+            _ => { // Unknown event: {:032b}", bare_event }
+            }
+        }
+    }
+
+    /// Returns the Key enum corresponding to the given pancurses event.
+    fn parse_mouse_button(&self, bare_event: mmask_t) -> MouseButton {
+        match bare_event {
+            pancurses::BUTTON1_RELEASED
+            | pancurses::BUTTON1_PRESSED
+            | pancurses::BUTTON1_CLICKED
+            | pancurses::BUTTON1_DOUBLE_CLICKED
+            | pancurses::BUTTON1_TRIPLE_CLICKED => MouseButton::Left,
+            pancurses::BUTTON2_RELEASED
+            | pancurses::BUTTON2_PRESSED
+            | pancurses::BUTTON2_CLICKED
+            | pancurses::BUTTON2_DOUBLE_CLICKED
+            | pancurses::BUTTON2_TRIPLE_CLICKED => MouseButton::Middle,
+            pancurses::BUTTON3_RELEASED
+            | pancurses::BUTTON3_PRESSED
+            | pancurses::BUTTON3_CLICKED
+            | pancurses::BUTTON3_CLICKED
+            | pancurses::BUTTON3_DOUBLE_CLICKED
+            | pancurses::BUTTON3_TRIPLE_CLICKED => MouseButton::Right,
+            pancurses::BUTTON4_RELEASED
+            | pancurses::BUTTON4_PRESSED
+            | pancurses::BUTTON4_CLICKED
+            | pancurses::BUTTON4_DOUBLE_CLICKED
+            | pancurses::BUTTON4_TRIPLE_CLICKED => MouseButton::Unknown,
+            pancurses::BUTTON5_RELEASED
+            | pancurses::BUTTON5_PRESSED
+            | pancurses::BUTTON5_CLICKED
+            | pancurses::BUTTON5_DOUBLE_CLICKED
+            | pancurses::BUTTON5_TRIPLE_CLICKED => MouseButton::Unknown,
+            _ => MouseButton::Unknown
+        }
+    }
+}
+
+pub fn find_closest(color: Color, max_colors: i16) -> i16 {
+    match color {
+        // Dark colors
+        Color::Black => 0,
+        Color::DarkRed => 1,
+        Color::DarkGreen => 2,
+        Color::DarkYellow => 3,
+        Color::DarkBlue => 4,
+        Color::DarkMagenta => 5,
+        Color::DarkCyan => 6,
+        Color::Grey => 7,
+
+        // Light colors
+        Color::Red => 9 % max_colors,
+        Color::Green => 10 % max_colors,
+        Color::Yellow => 11 % max_colors,
+        Color::Blue => 12 % max_colors,
+        Color::Magenta => 13 % max_colors,
+        Color::Cyan => 14 % max_colors,
+        Color::White => 15 % max_colors,
+        Color::Rgb(r, g, b) if max_colors >= 256 => {
+            // If r = g = b, it may be a grayscale value!
+            if r == g && g == b && r != 0 && r < 250 {
+                // Grayscale
+                // (r = g = b) = 8 + 10 * n
+                // (r - 8) / 10 = n
+                //
+                let n = (r - 8) / 10;
+                i16::from(232 + n)
+            } else {
+                // Generic RGB
+                let r = 6 * u16::from(r) / 256;
+                let g = 6 * u16::from(g) / 256;
+                let b = 6 * u16::from(b) / 256;
+                (16 + 36 * r + 6 * g + b) as i16
+            }
+        }
+        Color::Rgb(r, g, b) => {
+            let r = if r > 127 { 1 } else { 0 };
+            let g = if g > 127 { 1 } else { 0 };
+            let b = if b > 127 { 1 } else { 0 };
+            (r + 2 * g + 4 * b) as i16
+        }
+        _ => { -1 } // default color
+    }
+}
+
+
+//Input::KeyEvent => {},
+//Input::KeyMouse => {},
+//Input::Unknown(_) => {}
+//KeyCodeYes => {}
+//Input::KeyBreak => {}
+//Input::KeyIL => {}
+//Input::KeyDC => {}
+//Input::KeyEIC => {}
+//Input::KeyClear => {}
+//Input::KeyEOS => {}
+//Input::KeyEOL => {}
+//Input::KeyReset => {}
+//Input::KeyPrint => {}
+//Input::KeyLL => {}
+//Input::KeyAbort => {}
+//Input::KeySHelp => {}
+//Input::KeyLHelp => {}
+//Input::KeyBeg => {}
+//Input::KeyCancel => {}
+//Input::KeyClose => {}
+//Input::KeyCommand => {}
+//Input::KeyCopy => {}
+//Input::KeyCreate => {}
+//Input::KeyExit => {}
+//Input::KeyFind => {}
+//Input::KeyHelp => {}
+//Input::KeyMark => {}
+//Input::KeyMessage => {}
+//Input::KeyMove => {}
+//Input::KeyNext => {}
+//Input::KeyOpen => {}
+//Input::KeyOptions => {}
+//Input::KeyPrevious => {}
+//Input::KeyRedo => {}
+//Input::KeyReference => {}
+//Input::KeyRefresh => {}
+//Input::KeyReplace => {}
+//Input::KeyRestart => {}
+//Input::KeyResume => {}
+//Input::KeySave => {}
+//Input::KeySBeg => {}
+//Input::KeySCancel => {}
+//Input::KeySCommand => {}
+//Input::KeySCopy => {}
+//Input::KeySCreate => {}
+//Input::KeySDL => {}
+//Input::KeySelect => {}
+//Input::KeySEOL => {}
+//Input::KeySExit => {}
+//Input::KeySFind => {}
+//Input::KeySMessage => {}
+//Input::KeySMove => {}
+//Input::KeySOptions => {}
+//Input::KeySRedo => {}
+//Input::KeySReplace => {}
+//Input::KeySResume => {}
+//Input::KeySSave => {}
+//Input::KeySSuspend => {}
+//Input::KeySUndo => {}
+//Input::KeySuspend => {}
+//Input::KeyUndo => {}
+//Input::KeyA1 => {}
+//Input::KeyA3 => {}
+//Input::KeyB2 => {}
+//Input::KeyC1 => {}
+//Input::KeyC3 => {}
+
+

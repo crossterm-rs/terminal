@@ -25,6 +25,7 @@ features = ["crossterm-backend"]
 default = ["crossterm-backend"]
 termion-backend = ["termion", "signal-hook", "libc", "crossbeam-channel"]
 crossterm-backend = ["crossterm"]
+pancurses-backend = ["pancurses"]
 
 #
 # Shared dependencies
@@ -42,6 +43,10 @@ version = "1.5.3"
 [dependencies.crossterm]
 optional = true
 version = "0.14"
+
+[dependencies.pancurses]
+optional = true
+version = "0.16.1"
 
 #
 # UNIX dependencies
