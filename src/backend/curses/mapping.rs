@@ -4,6 +4,8 @@ use std::io::Write;
 
 impl<W: Write> super::BackendImpl<W> {
     pub fn parse_next(&self, input: pancurses::Input) -> Event {
+//        panic!("{:?}", input);
+
         /// Try to map the pancurses input event to an `KeyEvent` with possible modifiers.
         let key_event = self.try_parse_key(&input).map_or(
             self.try_parse_shift_key(&input).map_or(
@@ -29,40 +31,57 @@ impl<W: Write> super::BackendImpl<W> {
 
     /// Matches on keys without modifiers, returns `None` if the key has modifiers or is not supported.
     pub fn try_parse_key(&self, input: &pancurses::Input) -> Option<KeyEvent> {
+        let empty = KeyModifiers::empty();
+
         let key_code = match input {
-            &Input::Character(c) => Some(KeyCode::Char(c)),
-            &Input::KeyDown => Some(KeyCode::Down),
-            &Input::KeyUp => Some(KeyCode::Up),
-            &Input::KeyLeft => Some(KeyCode::Left),
-            &Input::KeyRight => Some(KeyCode::Right),
-            &Input::KeyHome => Some(KeyCode::Home),
-            &Input::KeyBackspace => Some(KeyCode::Backspace),
-            &Input::KeyF0 => Some(KeyCode::F(0)),
-            &Input::KeyF1 => Some(KeyCode::F(1)),
-            &Input::KeyF2 => Some(KeyCode::F(2)),
-            &Input::KeyF3 => Some(KeyCode::F(3)),
-            &Input::KeyF4 => Some(KeyCode::F(4)),
-            &Input::KeyF5 => Some(KeyCode::F(5)),
-            &Input::KeyF6 => Some(KeyCode::F(6)),
-            &Input::KeyF7 => Some(KeyCode::F(7)),
-            &Input::KeyF8 => Some(KeyCode::F(8)),
-            &Input::KeyF9 => Some(KeyCode::F(9)),
-            &Input::KeyF10 => Some(KeyCode::F(10)),
-            &Input::KeyF11 => Some(KeyCode::F(11)),
-            &Input::KeyF12 => Some(KeyCode::F(12)),
-            &Input::KeyF13 => Some(KeyCode::F(13)),
-            &Input::KeyF14 => Some(KeyCode::F(14)),
-            &Input::KeyF15 => Some(KeyCode::F(15)),
-            &Input::KeyDL => Some(KeyCode::Delete),
-            &Input::KeyIC => Some(KeyCode::Insert),
-            &Input::KeyNPage => Some(KeyCode::PageDown),
-            &Input::KeyPPage => Some(KeyCode::PageUp),
-            &Input::KeyEnter => Some(KeyCode::Enter),
-            &Input::KeyEnd => Some(KeyCode::End),
+            &Input::Character(c) => {
+                match c {
+                    '\r' | '\n' => Some(KeyCode::Enter.into()),
+                    '\t'  => Some(KeyCode::Tab.into()),
+                    '\x7F' => Some(KeyCode::Backspace.into()),
+                    '\u{8}' => Some(KeyCode::Backspace.into()),
+                    c @ '\x01'..='\x1A' => Some(KeyEvent::new(KeyCode::Char((c as u8 - 0x1 + b'a') as char),KeyModifiers::CONTROL)),
+                    c @ '\x1C'..='\x1F' => Some(KeyEvent::new(KeyCode::Char((c as u8 - 0x1C + b'4') as char), KeyModifiers::CONTROL)),
+                    _ if (c as u32) <= 26 => {
+                        Some(KeyEvent::new(KeyCode::Char((b'a' - 1 + c as u8) as char),KeyModifiers::CONTROL))
+                    }
+//                    '\u{1b}' => Some(KeyCode::Esc.into()),
+
+                    c => { Some(KeyCode::Char(c).into()) }
+                }
+            }
+            &Input::KeyDown => Some(KeyEvent { code: KeyCode::Down, modifiers: empty }),
+            &Input::KeyUp => Some(KeyEvent { code: KeyCode::Up, modifiers: empty }),
+            &Input::KeyLeft => Some(KeyEvent { code: KeyCode::Left, modifiers: empty }),
+            &Input::KeyRight => Some(KeyEvent { code: KeyCode::Right, modifiers: empty }),
+            &Input::KeyHome => Some(KeyEvent { code: KeyCode::Home, modifiers: empty }),
+            &Input::KeyBackspace => Some(KeyEvent { code: KeyCode::Backspace, modifiers: empty }),
+            &Input::KeyF0 => Some(KeyEvent { code: KeyCode::F(0), modifiers: empty }),
+            &Input::KeyF1 => Some(KeyEvent { code: KeyCode::F(1), modifiers: empty }),
+            &Input::KeyF2 => Some(KeyEvent { code: KeyCode::F(2), modifiers: empty }),
+            &Input::KeyF3 => Some(KeyEvent { code: KeyCode::F(3), modifiers: empty }),
+            &Input::KeyF4 => Some(KeyEvent { code: KeyCode::F(4), modifiers: empty }),
+            &Input::KeyF5 => Some(KeyEvent { code: KeyCode::F(5), modifiers: empty }),
+            &Input::KeyF6 => Some(KeyEvent { code: KeyCode::F(6), modifiers: empty }),
+            &Input::KeyF7 => Some(KeyEvent { code: KeyCode::F(7), modifiers: empty }),
+            &Input::KeyF8 => Some(KeyEvent { code: KeyCode::F(8), modifiers: empty }),
+            &Input::KeyF9 => Some(KeyEvent { code: KeyCode::F(9), modifiers: empty }),
+            &Input::KeyF10 => Some(KeyEvent { code: KeyCode::F(10), modifiers: empty }),
+            &Input::KeyF11 => Some(KeyEvent { code: KeyCode::F(11), modifiers: empty }),
+            &Input::KeyF12 => Some(KeyEvent { code: KeyCode::F(12), modifiers: empty }),
+            &Input::KeyF13 => Some(KeyEvent { code: KeyCode::F(13), modifiers: empty }),
+            &Input::KeyF14 => Some(KeyEvent { code: KeyCode::F(14), modifiers: empty }),
+            &Input::KeyF15 => Some(KeyEvent { code: KeyCode::F(15), modifiers: empty }),
+            &Input::KeyDL => Some(KeyEvent { code: KeyCode::Delete, modifiers: empty }),
+            &Input::KeyIC => Some(KeyEvent { code: KeyCode::Insert, modifiers: empty }),
+            &Input::KeyNPage => Some(KeyEvent { code: KeyCode::PageDown, modifiers: empty }),
+            &Input::KeyPPage => Some(KeyEvent { code: KeyCode::PageUp, modifiers: empty }),
+            &Input::KeyEnter => Some(KeyEvent { code: KeyCode::Enter, modifiers: empty }),
+            &Input::KeyEnd => Some(KeyEvent { code: KeyCode::End, modifiers: empty }),
             _ => None,
         };
 
-        key_code.map(|e| KeyEvent::new(e, KeyModifiers::empty()))
+        key_code.map(|e| e)
     }
 
     /// Matches on shift keys, returns `None` if the key does not have an SHIFT modifier or is not supported.
@@ -121,6 +140,16 @@ impl<W: Write> super::BackendImpl<W> {
                 Some(Event::Resize)
             }
             &Input::KeyMouse => Some(self.parse_mouse_event()),
+            &Input::Unknown(code) => {
+                Some(self
+                    .key_codes
+                    // pancurses does some weird keycode mapping
+                    .get(&(code + 256 + 48))
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        Event::Unknown
+                    }))
+            }
             _ => None,
         }
     }
@@ -153,6 +182,7 @@ impl<W: Write> super::BackendImpl<W> {
         let (x, y) = (mevent.x as u16, mevent.y as u16);
 
         if mevent.bstate == pancurses::REPORT_MOUSE_POSITION as mmask_t {
+            println!("{:?}, {:?}", mevent, self.get_last_btn());
             // The event is either a mouse drag event,
             // or a weird double-release event. :S
             self.get_last_btn()
@@ -193,6 +223,7 @@ impl<W: Write> super::BackendImpl<W> {
 
                 Event::Mouse(event)
             } else {
+                panic!("no event parsed {:?}", mevent);
                 // No event parsed?...
                 Event::Unknown
             }
@@ -299,14 +330,14 @@ impl<W: Write> super::BackendImpl<W> {
 pub fn find_closest(color: Color, max_colors: i16) -> i16 {
     match color {
         // Dark colors
-        Color::Black => 0,
-        Color::DarkRed => 1,
-        Color::DarkGreen => 2,
-        Color::DarkYellow => 3,
-        Color::DarkBlue => 4,
-        Color::DarkMagenta => 5,
-        Color::DarkCyan => 6,
-        Color::Grey => 7,
+        Color::Black => pancurses::COLOR_BLACK,
+        Color::DarkRed => pancurses::COLOR_RED,
+        Color::DarkGreen => pancurses::COLOR_GREEN,
+        Color::DarkYellow => pancurses::COLOR_YELLOW,
+        Color::DarkBlue => pancurses::COLOR_BLUE,
+        Color::DarkMagenta => pancurses::COLOR_MAGENTA,
+        Color::DarkCyan => pancurses::COLOR_CYAN,
+        Color::Grey => pancurses::COLOR_WHITE,
 
         // Light colors
         Color::Red => 9 % max_colors,
@@ -342,6 +373,75 @@ pub fn find_closest(color: Color, max_colors: i16) -> i16 {
         _ => -1, // default color
     }
 }
+
+////
+//// Following `Parser` structure exists for two reasons:
+////
+////  * mimick anes Parser interface
+////  * move the advancing, parsing, ... stuff out of the `try_read` method
+////
+//struct Parser {
+//    buffer: Vec<u8>,
+//    internal_events: VecDeque<InternalEvent>,
+//}
+//
+//impl Default for Parser {
+//    fn default() -> Self {
+//        Parser {
+//            // This buffer is used for -> 1 <- ANSI escape sequence. Are we
+//            // aware of any ANSI escape sequence that is bigger? Can we make
+//            // it smaller?
+//            //
+//            // Probably not worth spending more time on this as "there's a plan"
+//            // to use the anes crate parser.
+//            buffer: Vec::with_capacity(256),
+//            // TTY_BUFFER_SIZE is 1_024 bytes. How many ANSI escape sequences can
+//            // fit? What is an average sequence length? Let's guess here
+//            // and say that the average ANSI escape sequence length is 8 bytes. Thus
+//            // the buffer size should be 1024/8=128 to avoid additional allocations
+//            // when processing large amounts of data.
+//            //
+//            // There's no need to make it bigger, because when you look at the `try_read`
+//            // method implementation, all events are consumed before the next TTY_BUFFER
+//            // is processed -> events pushed.
+//            internal_events: VecDeque::with_capacity(128),
+//        }
+//    }
+//}
+//
+//impl Parser {
+//    fn advance(&mut self, buffer: &[u8], more: bool) {
+//        for (idx, byte) in buffer.iter().enumerate() {
+//            let more = idx + 1 < buffer.len() || more;
+//
+//            self.buffer.push(*byte);
+//
+//            match parse_event(&self.buffer, more) {
+//                Ok(Some(ie)) => {
+//                    self.internal_events.push_back(ie);
+//                    self.buffer.clear();
+//                }
+//                Ok(None) => {
+//                    // Event can't be parsed, because we don't have enough bytes for
+//                    // the current sequence. Keep the buffer and process next bytes.
+//                }
+//                Err(_) => {
+//                    // Event can't be parsed (not enough parameters, parameter is not a number, ...).
+//                    // Clear the buffer and continue with another sequence.
+//                    self.buffer.clear();
+//                }
+//            }
+//        }
+//    }
+//}
+//
+//impl Iterator for Parser {
+//    type Item = InternalEvent;
+//
+//    fn next(&mut self) -> Option<Self::Item> {
+//        self.internal_events.pop_front()
+//    }
+//}
 
 //Input::KeyEvent => {},
 //Input::KeyMouse => {},

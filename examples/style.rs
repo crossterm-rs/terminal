@@ -69,6 +69,11 @@ fn rgb_blue_values<W: Write>(w: &mut TerminalLock<W>) -> error::Result<()> {
 fn main() {
     let stdout = stdout();
     let mut lock = stdout.lock_mut().unwrap();
+    lock.act(Action::EnableRawMode).unwrap();
+    lock.act(Action::EnterAlternateScreen).unwrap();
 
-    rgb(&mut lock);
+    lock.act(Action::SetForegroundColor(Color::Red)).unwrap();
+    lock.act(Action::SetBackgroundColor(Color::Green)).unwrap();
+
+
 }
