@@ -1,15 +1,12 @@
 use crate::backend::curses::mapping::find_closest;
 use crate::backend::Backend;
 use crate::{error, Action, Attribute, Clear, Color, Event, MouseButton, Retrieved, Value, KeyEvent, KeyModifiers, KeyCode};
-use pancurses::{COLORS, SCREEN, ToChtype};
+use pancurses::{COLORS, ToChtype, SCREEN};
 use std::collections::HashMap;
 use std::io;
-use std::io::Write;
+use std::io::{Write, Error, ErrorKind};
 use std::marker::PhantomData;
 use std::sync::RwLock;
-use std::fs::File;
-use std::ffi::CStr;
-use std::os::unix::io::IntoRawFd;
 
 const MOUSE_EVENT_MASK: u32 = pancurses::ALL_MOUSE_EVENTS | pancurses::REPORT_MOUSE_POSITION;
 
@@ -27,13 +24,13 @@ pub struct BackendImpl<W: Write> {
     screen_ptr: SCREEN,
 
     pub(crate) key_codes: HashMap<i32, Event>,
+
+    // bg, fg
+    current_style: (Color, Color)
 }
 
 impl<W: Write> BackendImpl<W> {
     /// Prints the given string-like value into the window by printing each
- /// individual character into the window. If there is any error encountered
- /// upon printing a character, that cancels the printing of the rest of the
- /// characters.
     pub fn print<S: AsRef<str>>(&mut self, asref: S) {
         // Here we want to
         if cfg!(windows) {
@@ -54,7 +51,6 @@ impl<W: Write> BackendImpl<W> {
         true
     }
 
-
     pub fn update_input_buffer(&self, btn: Event) {
         let mut lock = self.stored_event.write().unwrap();
         *lock = Some(btn);
@@ -74,30 +70,31 @@ impl<W: Write> BackendImpl<W> {
     }
 
     pub fn store_fg(&mut self, fg_color: Color) -> i32 {
-        let closest_color = find_closest(fg_color, COLORS() as i16);
+        let closest_fg_color = find_closest(fg_color, COLORS() as i16);
+        let closest_bg_color = find_closest(self.current_style.0, COLORS() as i16);
 
-        if self.color_pairs.contains_key(&closest_color) {
-            self.color_pairs[&closest_color]
+        if self.color_pairs.contains_key(&closest_fg_color) {
+            self.color_pairs[&closest_fg_color]
         }else {
             let index = self.new_color_pair_index();
 
-            self.color_pairs.insert(closest_color, index);
-            pancurses::init_pair(index as i16, closest_color, -1);
+            self.color_pairs.insert(closest_fg_color, index);
+            pancurses::init_pair(index as i16, closest_fg_color, closest_bg_color);
             index
         }
     }
 
-
     pub fn store_bg(&mut self, bg_color: Color) -> i32 {
-        let closest_color = find_closest(bg_color, COLORS() as i16);
+        let closest_fg_color = find_closest(self.current_style.1, COLORS() as i16);
+        let closest_bg_color = find_closest(bg_color, COLORS() as i16);
 
-        if self.color_pairs.contains_key(&closest_color) {
-            self.color_pairs[&closest_color]
+        if self.color_pairs.contains_key(&closest_bg_color) {
+            self.color_pairs[&closest_bg_color]
         }else {
             let index = self.new_color_pair_index();
 
-            self.color_pairs.insert(closest_color, index);
-            pancurses::init_pair(index as i16, -1, closest_color);
+            self.color_pairs.insert(closest_bg_color, index);
+            pancurses::init_pair(index as i16, closest_fg_color, closest_bg_color);
             index
         }
     }
@@ -120,16 +117,22 @@ impl<W: Write> BackendImpl<W> {
 
 impl<W: Write> Backend<W> for BackendImpl<W> {
     fn create() -> Self {
+        use std::fs::File;
+        use std::ffi::CStr;
+        use std::os::unix::io::IntoRawFd;
+
         let file = File::open("/dev/tty").unwrap();
 
         let c_file = unsafe {
-           libc::fdopen(
+            libc::fdopen(
                 file.into_raw_fd(),
-                CStr::from_bytes_with_nul_unchecked(b"r\0").as_ptr(),
+                CStr::from_bytes_with_nul_unchecked(b"w+\0").as_ptr(),
             )
         };
 
         let screen = unsafe { pancurses::newterm(Some(env!("TERM")), c_file, c_file) };
+
+        pancurses::set_term(screen);
 
         let window = pancurses::stdscr();
 
@@ -138,14 +141,20 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
         pancurses::use_default_colors();
         pancurses::mousemask(pancurses::ALL_MOUSE_EVENTS | pancurses::REPORT_MOUSE_POSITION, ::std::ptr::null_mut());
 
+        // initialize default colors
+        let mut map = HashMap::<i16, i32>::new();
+        map.insert(-1, 0);
+        pancurses::init_pair(0 , -1, -1);
+
         BackendImpl {
             _phantom: PhantomData,
             window,
             last_mouse_button: RwLock::new(None),
             stored_event: RwLock::new(None),
-            color_pairs: HashMap::new(),
+            color_pairs: map,
             screen_ptr: screen,
-            key_codes: initialize_keymap()
+            key_codes: initialize_keymap(),
+            current_style: (Color::Reset, Color::Reset)
         }
     }
 
@@ -156,7 +165,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
 
     fn batch(&mut self, action: Action, buffer: &mut W) -> error::Result<()> {
         let a = match action {
-            Action::MoveCursorTo(x, y) => self.window.mv(x as i32, y as i32),
+            Action::MoveCursorTo(x, y) => self.window.mv(y as i32, x as i32),
             Action::HideCursor => pancurses::curs_set(0) as i32,
             Action::ShowCursor => pancurses::curs_set(1) as i32,
             Action::EnableBlinking => pancurses::set_blink(true),
@@ -168,17 +177,15 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                     Clear::UntilNewLine => self.window.clrtoeol(),
                     Clear::FromCursorUp => 0, // TODO, not supported by pancurses
                     Clear::CurrentLine => 0,  // TODO, not supported by pancurses
-                };
-
-                0
+                }
             }
             Action::SetTerminalSize(cols, rows) => pancurses::resize_term(rows as i32, cols as i32),
             Action::ScrollUp(_) => 0,   // TODO, not supported by pancurses
             Action::ScrollDown(_) => 0, // TODO, not supported by pancurses
             Action::EnableRawMode => {
                 pancurses::noecho();
-                pancurses::raw();
-                pancurses::nonl()
+                pancurses::raw()
+//                pancurses::nl()
             }
             Action::DisableRawMode => {
                 pancurses::echo();
@@ -186,9 +193,6 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                 pancurses::nl()
             }
             Action::EnterAlternateScreen => {
-                self.window.mv(self.window.get_max_y() - 1, self.window.get_max_x() - 1);
-                self.print("ABCDEFG");
-                self.window.refresh();
                 0i32
             }
             Action::LeaveAlternateScreen => {
@@ -206,16 +210,17 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                 0i32
             }
             Action::SetForegroundColor(color) => {
+                self.current_style.1 = color;
                 let index = self.store_fg(color);
                 let style = pancurses::COLOR_PAIR(index as pancurses::chtype);
                 self.window.attron(style);
-                self.print("BACKGROUND");
                 self.window.refresh()
             }
             Action::SetBackgroundColor(color) => {
+                self.current_style.0 = color;
                 let index = self.store_bg(color);
                 let style = pancurses::COLOR_PAIR(index as pancurses::chtype);
-                self.print("FOREGROUND");
+                self.window.attron(style);
                 self.window.refresh()
             }
             Action::SetAttribute(attr) => {
@@ -258,6 +263,10 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             }
             Action::ResetColor => 0, // TODO
         };
+
+        if a == -1 {
+           return Err(error::ErrorKind::IoError(Error::new(ErrorKind::Other, "Could not execute command.")))
+        }
 
         Ok(())
     }
