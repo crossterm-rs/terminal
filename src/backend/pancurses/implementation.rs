@@ -1,18 +1,22 @@
-use crate::backend::pancurses::current_style::CurrentStyle;
-use crate::backend::pancurses::mapping::find_closest;
-use crate::backend::Backend;
 use crate::{
+    backend::{
+        pancurses::{current_style::CurrentStyle, mapping::find_closest},
+        Backend,
+    },
     error, Action, Attribute, Clear, Color, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton,
     Retrieved, Value,
 };
 use pancurses::{ToChtype, Window, COLORS};
-use std::collections::HashMap;
-use std::ffi::CStr;
-use std::fs::File;
-use std::io::{Error, ErrorKind, Write};
-use std::os::unix::io::IntoRawFd;
-use std::sync::RwLock;
-use std::{io, result};
+use std::{
+    collections::HashMap,
+    ffi::CStr,
+    fs::File,
+    io,
+    io::{Error, ErrorKind, Write},
+    os::unix::io::IntoRawFd,
+    result,
+    sync::RwLock,
+};
 
 #[derive(Default)]
 struct InputCache {

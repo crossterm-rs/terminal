@@ -1,10 +1,7 @@
 #![allow(clippy::cognitive_complexity)]
 
-use std::io::Write;
-use std::thread;
-use std::time::Duration;
-use terminal::error::Result;
-use terminal::{stdout, Action, Attribute, TerminalLock};
+use std::{io::Write, thread, time::Duration};
+use terminal::{error::Result, stdout, Action, Attribute, TerminalLock};
 
 const ATTRIBUTES: [(Attribute, Attribute); 7] = [
     (Attribute::Bold, Attribute::BoldOff),
