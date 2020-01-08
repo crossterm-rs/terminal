@@ -1,31 +1,39 @@
-use crate::backend::curses::mapping::find_closest;
+use crate::backend::pancurses::current_style::CurrentStyle;
+use crate::backend::pancurses::mapping::find_closest;
 use crate::backend::Backend;
-use crate::{error, Action, Attribute, Clear, Color, Event, MouseButton, Retrieved, Value, KeyEvent, KeyModifiers, KeyCode};
-use pancurses::{COLORS, ToChtype, SCREEN};
+use crate::{
+    error, Action, Attribute, Clear, Color, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton,
+    Retrieved, Value,
+};
+use pancurses::{ToChtype, Window, COLORS};
 use std::collections::HashMap;
-use std::{io, result};
-use std::io::{Write, Error, ErrorKind};
+use std::ffi::CStr;
+use std::fs::File;
+use std::io::{Error, ErrorKind, Write};
+use std::os::unix::io::IntoRawFd;
 use std::sync::RwLock;
+use std::{io, result};
 
-const MOUSE_EVENT_MASK: u32 = pancurses::ALL_MOUSE_EVENTS | pancurses::REPORT_MOUSE_POSITION;
+#[derive(Default)]
+struct InputCache {
+    last_mouse_button: Option<MouseButton>,
+    stored_event: Option<Event>,
+}
 
 pub struct BackendImpl<W: Write> {
     buffer: W,
     window: pancurses::Window,
 
-    last_mouse_button: RwLock<Option<MouseButton>>,
-    stored_event: RwLock<Option<Event>>,
+    input_cache: RwLock<InputCache>,
 
     // ncurses stores color values in pairs (fg, bg) color.
     // We store those pairs in this hashmap on order to keep track of the pairs we initialized.
     color_pairs: HashMap<i16, i32>,
 
-    screen_ptr: SCREEN,
-
     pub(crate) key_codes: HashMap<i32, Event>,
 
     // bg, fg
-    current_style: (Color, Color),
+    current_style: CurrentStyle,
 }
 
 impl<W: Write> BackendImpl<W> {
@@ -53,49 +61,45 @@ impl<W: Write> BackendImpl<W> {
     }
 
     pub fn update_input_buffer(&self, btn: Event) {
-        let mut lock = self.stored_event.write().unwrap();
-        *lock = Some(btn);
+        let mut lock = self.input_cache.write().unwrap();
+        lock.stored_event = Some(btn);
     }
 
     pub fn try_take(&self) -> Option<Event> {
-        self.stored_event.write().unwrap().take()
+        self.input_cache.write().unwrap().stored_event.take()
     }
 
     pub fn update_last_btn(&self, btn: MouseButton) {
-        let mut lock = self.last_mouse_button.write().unwrap();
-        *lock = Some(btn);
+        let mut lock = self.input_cache.write().unwrap();
+        lock.last_mouse_button = Some(btn);
     }
 
     pub fn get_last_btn(&self) -> Option<MouseButton> {
-        self.last_mouse_button.read().unwrap().clone()
+        self.input_cache.read().unwrap().last_mouse_button.clone()
     }
 
     pub fn store_fg(&mut self, fg_color: Color) -> i32 {
         let closest_fg_color = find_closest(fg_color, COLORS() as i16);
-        let closest_bg_color = find_closest(self.current_style.0, COLORS() as i16);
+        let closest_bg_color = find_closest(self.current_style.background, COLORS() as i16);
 
-        if self.color_pairs.contains_key(&closest_fg_color) {
-            self.color_pairs[&closest_fg_color]
-        }else {
-            let index = self.new_color_pair_index();
-
-            self.color_pairs.insert(closest_fg_color, index);
-            pancurses::init_pair(index as i16, closest_fg_color, closest_bg_color);
-            index
-        }
+        self.get_or_insert(closest_fg_color, closest_fg_color, closest_bg_color)
     }
 
     pub fn store_bg(&mut self, bg_color: Color) -> i32 {
-        let closest_fg_color = find_closest(self.current_style.1, COLORS() as i16);
+        let closest_fg_color = find_closest(self.current_style.foreground, COLORS() as i16);
         let closest_bg_color = find_closest(bg_color, COLORS() as i16);
 
-        if self.color_pairs.contains_key(&closest_bg_color) {
-            self.color_pairs[&closest_bg_color]
-        }else {
+        self.get_or_insert(closest_bg_color, closest_fg_color, closest_bg_color)
+    }
+
+    pub fn get_or_insert(&mut self, key: i16, fg_color: i16, bg_color: i16) -> i32 {
+        if self.color_pairs.contains_key(&key) {
+            self.color_pairs[&key]
+        } else {
             let index = self.new_color_pair_index();
 
-            self.color_pairs.insert(closest_bg_color, index);
-            pancurses::init_pair(index as i16, closest_fg_color, closest_bg_color);
+            self.color_pairs.insert(key, index);
+            pancurses::init_pair(index as i16, fg_color, bg_color);
             index
         }
     }
@@ -107,7 +111,7 @@ impl<W: Write> BackendImpl<W> {
             // We still have plenty of space for everyone.
             n
         } else {
-            // The world is too small for both of us.
+            // resize color pairs
             let target = n - 1;
             // Remove the mapping to n-1
             self.color_pairs.retain(|_, &mut v| v != target);
@@ -116,45 +120,78 @@ impl<W: Write> BackendImpl<W> {
     }
 }
 
-impl<W: Write> Backend<W> for BackendImpl<W> {
-    fn create(buffer: W) -> Self {
-        use std::fs::File;
-        use std::ffi::CStr;
-        use std::os::unix::io::IntoRawFd;
+fn init_stdout_window() -> Window {
+    // For windows we only support the default pancurses initialisation.
+    // By default pancurses uses stdout.
+    // TODO: support using `newterm` like `init_unix_window` so that we are not depended off stdout.
+    pancurses::initscr()
+}
 
-        let file = File::open("/dev/tty").unwrap();
+#[cfg(unix)]
+fn init_custom_window() -> Window {
+    // By default pancurses use stdout.
+    // We can change this by calling `new_term` with an FILE pointer to the source.
+    // Which is /dev/tty in our case.
+    let file = File::open("/dev/tty").unwrap();
 
-        let c_file = unsafe {
-            libc::fdopen(
-                file.into_raw_fd(),
-                CStr::from_bytes_with_nul_unchecked(b"w+\0").as_ptr(),
-            )
-        };
+    let c_file = unsafe {
+        libc::fdopen(
+            file.into_raw_fd(),
+            CStr::from_bytes_with_nul_unchecked(b"w+\0").as_ptr(),
+        )
+    };
 
-        let screen = unsafe { pancurses::newterm(Some(env!("TERM")), c_file, c_file) };
+    if cfg!(unix)
+        && std::env::var("TERM")
+            .map(|var| var.is_empty())
+            .unwrap_or(false)
+    {
+        return init_stdout_window();
+    } else {
+        // Create screen pointer which we will be using for this backend.
+        let screen = pancurses::newterm(Some(env!("TERM")), c_file, c_file);
 
+        // Set the created screen as active.
         pancurses::set_term(screen);
 
-        let window = pancurses::stdscr();
+        // Get `Window` of the created screen.
+        pancurses::stdscr()
+    }
+}
 
+impl<W: Write> Backend<W> for BackendImpl<W> {
+    fn create(buffer: W) -> Self {
+        // The delay is the time ncurses wait after pressing ESC
+        // to see if it's an escape sequence.
+        // Default delay is way too long. 25 is imperceptible yet works fine.
+        ::std::env::set_var("ESCDELAY", "25");
+
+        #[cfg(windows)]
+        let window = init_windows_window();
+
+        #[cfg(unix)]
+        let window = init_custom_window();
+
+        // Some default settings
         window.keypad(true);
         pancurses::start_color();
         pancurses::use_default_colors();
-        pancurses::mousemask(pancurses::ALL_MOUSE_EVENTS | pancurses::REPORT_MOUSE_POSITION, ::std::ptr::null_mut());
+        pancurses::mousemask(
+            pancurses::ALL_MOUSE_EVENTS | pancurses::REPORT_MOUSE_POSITION,
+            ::std::ptr::null_mut(),
+        );
 
-        // initialize default colors
+        // Initialize the default fore and background.
         let mut map = HashMap::<i16, i32>::new();
         map.insert(-1, 0);
-        pancurses::init_pair(0 , -1, -1);
+        pancurses::init_pair(0, -1, -1);
 
         BackendImpl {
             window,
-            last_mouse_button: RwLock::new(None),
-            stored_event: RwLock::new(None),
+            input_cache: RwLock::new(InputCache::default()),
             color_pairs: map,
-            screen_ptr: screen,
             key_codes: initialize_keymap(),
-            current_style: (Color::Reset, Color::Reset),
+            current_style: CurrentStyle::new(),
             buffer,
         }
     }
@@ -164,68 +201,78 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
         self.flush_batch()
     }
 
+    #[warn(unused_assignments)]
     fn batch(&mut self, action: Action) -> error::Result<()> {
-        let a = match action {
-            Action::MoveCursorTo(x, y) => self.window.mv(y as i32, x as i32),
-            Action::HideCursor => pancurses::curs_set(0) as i32,
-            Action::ShowCursor => pancurses::curs_set(1) as i32,
-            Action::EnableBlinking => pancurses::set_blink(true),
-            Action::DisableBlinking => pancurses::set_blink(false),
+        let mut r = 0;
+
+        match action {
+            Action::MoveCursorTo(x, y) => {
+                r = self.window.mv(y as i32, x as i32);
+            }
+            Action::HideCursor => {
+                r = pancurses::curs_set(0) as i32;
+            }
+            Action::ShowCursor => {
+                r = pancurses::curs_set(1) as i32;
+            }
+            Action::EnableBlinking => {
+                r = pancurses::set_blink(true);
+            }
+            Action::DisableBlinking => {
+                r = pancurses::set_blink(false);
+            }
             Action::ClearTerminal(clear_type) => {
-                match clear_type {
+                r = match clear_type {
                     Clear::All => self.window.clear(),
                     Clear::FromCursorDown => self.window.clrtobot(),
                     Clear::UntilNewLine => self.window.clrtoeol(),
-                    Clear::FromCursorUp => 0, // TODO, not supported by pancurses
-                    Clear::CurrentLine => 0,  // TODO, not supported by pancurses
-                }
+                    Clear::FromCursorUp => 3, // TODO, not supported by pancurses
+                    Clear::CurrentLine => 3,  // TODO, not supported by pancurses
+                };
             }
-            Action::SetTerminalSize(cols, rows) => pancurses::resize_term(rows as i32, cols as i32),
-            Action::ScrollUp(_) => 0,   // TODO, not supported by pancurses
-            Action::ScrollDown(_) => 0, // TODO, not supported by pancurses
+            Action::SetTerminalSize(cols, rows) => {
+                pancurses::resize_term(rows as i32, cols as i32);
+            }
             Action::EnableRawMode => {
-                pancurses::noecho();
-                pancurses::raw();
-                pancurses::nl()
+                r = pancurses::noecho();
+                r = pancurses::raw();
+                r = pancurses::nonl();
             }
             Action::DisableRawMode => {
-                pancurses::echo();
-                pancurses::noraw();
-                pancurses::nl()
-            }
-            Action::EnterAlternateScreen => {
-                0i32
-            }
-            Action::LeaveAlternateScreen => {
-                // TODO,
-                0i32
+                r = pancurses::echo();
+                r = pancurses::noraw();
+                r = pancurses::nl();
             }
             Action::EnableMouseCapture => {
                 print!("\x1B[?1002h");
                 io::stdout().flush()?;
-                0i32
             }
             Action::DisableMouseCapture => {
                 print!("\x1B[?1002l");
                 io::stdout().flush().expect("could not flush stdout");
-                0i32
+            }
+            Action::ResetColor => {
+                let style = pancurses::COLOR_PAIR(0 as pancurses::chtype);
+                r = self.window.attron(style);
+                r = self.window.attroff(self.current_style.attributes);
+                r = self.window.refresh();
             }
             Action::SetForegroundColor(color) => {
-                self.current_style.1 = color;
+                self.current_style.foreground = color;
                 let index = self.store_fg(color);
                 let style = pancurses::COLOR_PAIR(index as pancurses::chtype);
-                self.window.attron(style);
-                self.window.refresh()
+                r = self.window.attron(style);
+                r = self.window.refresh();
             }
             Action::SetBackgroundColor(color) => {
-                self.current_style.0 = color;
+                self.current_style.background = color;
                 let index = self.store_bg(color);
                 let style = pancurses::COLOR_PAIR(index as pancurses::chtype);
-                self.window.attron(style);
-                self.window.refresh()
+                r = self.window.attron(style);
+                r = self.window.refresh();
             }
             Action::SetAttribute(attr) => {
-                let no_match1: Option<()> = match attr {
+                let no_match1 = match attr {
                     Attribute::Reset => Some(pancurses::Attribute::Normal),
                     Attribute::Bold => Some(pancurses::Attribute::Bold),
                     Attribute::Italic => Some(pancurses::Attribute::Italic),
@@ -233,28 +280,30 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                     Attribute::SlowBlink | Attribute::RapidBlink => {
                         Some(pancurses::Attribute::Blink)
                     }
-                    Attribute::Crossed => Some(pancurses::Attribute::Overline),
+                    Attribute::Crossed => Some(pancurses::Attribute::Strikeout),
                     Attribute::Reversed => Some(pancurses::Attribute::Reverse),
                     Attribute::Conceal => Some(pancurses::Attribute::Invisible),
                     _ => None, // OFF attributes and Fraktur, NormalIntensity, NormalIntensity, Framed
                 }
-                    .map(|attribute| {
-                        self.window.attron(attribute);
-                    });
+                .map(|attribute| {
+                    r = self.window.attron(attribute);
+                    self.current_style.attributes = self.current_style.attributes | attribute;
+                });
 
-                let no_match2: Option<()> = match attr {
+                let no_match2 = match attr {
                     Attribute::BoldOff => Some(pancurses::Attribute::Bold),
                     Attribute::ItalicOff => Some(pancurses::Attribute::Italic),
                     Attribute::UnderlinedOff => Some(pancurses::Attribute::Underline),
                     Attribute::BlinkOff => Some(pancurses::Attribute::Blink),
-                    Attribute::CrossedOff => Some(pancurses::Attribute::Overline),
+                    Attribute::CrossedOff => Some(pancurses::Attribute::Strikeout),
                     Attribute::ReversedOff => Some(pancurses::Attribute::Reverse),
                     Attribute::ConcealOff => Some(pancurses::Attribute::Invisible),
                     _ => None, // OFF attributes and Fraktur, NormalIntensity, NormalIntensity, Framed
                 }
-                    .map(|attribute| {
-                        self.window.attroff(attribute);
-                    });
+                .map(|attribute| {
+                    r = self.window.attroff(attribute);
+                    self.current_style.attributes = self.current_style.attributes ^ attribute;
+                });
 
                 if no_match1.is_none() && no_match2.is_none() {
                     return Err(error::ErrorKind::AttributeNotSupported(String::from(attr)))?;
@@ -262,14 +311,22 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                     return Ok(());
                 }
             }
-            Action::ResetColor => 0, // TODO
+            Action::EnterAlternateScreen
+            | Action::LeaveAlternateScreen
+            | Action::ScrollUp(_)
+            | Action::ScrollDown(_) => r = 3,
         };
 
-        if a == -1 {
-           return Err(error::ErrorKind::IoError(Error::new(ErrorKind::Other, "Could not execute command.")))
+        match r {
+            0 => Ok(()),
+            -1 => {
+                Err(error::ErrorKind::IoError(Error::new(ErrorKind::Other, "Some error occurred while executing the action")))
+            }
+            3 => {
+                Err(error::ErrorKind::ActionNotSupported("The action is not supported by pancurses. Either work around it or use an other backend.".to_string()))
+            }
+            _ => Ok(())
         }
-
-        Ok(())
     }
 
     fn flush_batch(&mut self) -> error::Result<()> {
@@ -309,8 +366,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
 
 impl<W: Write> Drop for BackendImpl<W> {
     fn drop(&mut self) {
-        print!("{}", DISABLE_MOUSE_CAPTURE);
-        io::stdout().flush().expect("could not flush stdout");
+        let _ = self.act(Action::DisableMouseCapture);
         pancurses::endwin();
     }
 }
@@ -318,8 +374,9 @@ impl<W: Write> Drop for BackendImpl<W> {
 impl<W: Write> Write for BackendImpl<W> {
     fn write(&mut self, buf: &[u8]) -> result::Result<usize, io::Error> {
         let string = std::str::from_utf8(buf).unwrap();
+        let len = string.len();
         self.print(string).unwrap();
-        Ok(string.len())
+        Ok(len)
     }
 
     fn flush(&mut self) -> result::Result<(), io::Error> {
@@ -327,7 +384,6 @@ impl<W: Write> Write for BackendImpl<W> {
         Ok(())
     }
 }
-
 
 fn initialize_keymap() -> HashMap<i32, Event> {
     let mut map = HashMap::default();
@@ -338,8 +394,8 @@ fn initialize_keymap() -> HashMap<i32, Event> {
 }
 
 fn fill_key_codes<F>(target: &mut HashMap<i32, Event>, f: F)
-    where
-        F: Fn(i32) -> Option<String>,
+where
+    F: Fn(i32) -> Option<String>,
 {
     let mut key_names = HashMap::<&str, KeyCode>::new();
     key_names.insert("DC", KeyCode::Delete);
@@ -370,21 +426,29 @@ fn fill_key_codes<F>(target: &mut HashMap<i32, Event>, f: F)
         };
 
         let event = match modifier {
-            "3" => Event::Key(KeyEvent { code: key, modifiers: KeyModifiers::ALT }),
-            "4" => Event::Key(KeyEvent { code: key, modifiers: KeyModifiers::ALT | KeyModifiers::SHIFT }),
-            "5" => Event::Key(KeyEvent { code: key, modifiers: KeyModifiers::CONTROL }),
-            "6" => Event::Key(KeyEvent { code: key, modifiers: KeyModifiers::CONTROL | KeyModifiers::CONTROL }),
-            "7" => Event::Key(KeyEvent { code: key, modifiers: KeyModifiers::CONTROL | KeyModifiers::ALT }),
+            "3" => Event::Key(KeyEvent {
+                code: key,
+                modifiers: KeyModifiers::ALT,
+            }),
+            "4" => Event::Key(KeyEvent {
+                code: key,
+                modifiers: KeyModifiers::ALT | KeyModifiers::SHIFT,
+            }),
+            "5" => Event::Key(KeyEvent {
+                code: key,
+                modifiers: KeyModifiers::CONTROL,
+            }),
+            "6" => Event::Key(KeyEvent {
+                code: key,
+                modifiers: KeyModifiers::CONTROL | KeyModifiers::CONTROL,
+            }),
+            "7" => Event::Key(KeyEvent {
+                code: key,
+                modifiers: KeyModifiers::CONTROL | KeyModifiers::ALT,
+            }),
             _ => continue,
         };
 
         target.insert(code, event);
     }
 }
-/// A sequence of escape codes to enable terminal mouse support.
-/// We use this directly instead of using `MouseTerminal` from termion.
-const ENABLE_MOUSE_CAPTURE: &'static str = "\x1B[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
-
-/// A sequence of escape codes to disable terminal mouse support.
-/// We use this directly instead of using `MouseTerminal` from termion.
-const DISABLE_MOUSE_CAPTURE: &'static str = "\x1B[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l";

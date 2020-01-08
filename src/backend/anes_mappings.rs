@@ -1,9 +1,6 @@
 use anes::parser;
 
-use crate::{
-    Event, KeyCode, KeyEvent, KeyModifiers, MouseButton,
-    MouseEvent,
-};
+use crate::{Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent};
 
 use anes::parser::Sequence;
 
@@ -13,28 +10,18 @@ impl From<parser::MouseButton> for MouseButton {
             parser::MouseButton::Left => MouseButton::Left,
             parser::MouseButton::Right => MouseButton::Right,
             parser::MouseButton::Middle => MouseButton::Middle,
-            parser::MouseButton::Any => MouseButton::Unknown
+            parser::MouseButton::Any => MouseButton::Unknown,
         }
     }
 }
 
 fn from_mouse(event: parser::Mouse, modifiers: KeyModifiers) -> MouseEvent {
     match event {
-        parser::Mouse::Down(btn, x, y) => {
-            MouseEvent::Up(btn.into(), x, y, modifiers)
-        }
-        parser::Mouse::Up(btn, x, y) => {
-            MouseEvent::Up(btn.into(), x, y, modifiers)
-        }
-        parser::Mouse::Drag(btn, x, y) => {
-            MouseEvent::Drag(btn.into(), x, y, modifiers)
-        }
-        parser::Mouse::ScrollDown(x, y) => {
-            MouseEvent::ScrollUp(x, y, modifiers)
-        }
-        parser::Mouse::ScrollUp(x, y) => {
-            MouseEvent::ScrollDown(x, y, modifiers)
-        }
+        parser::Mouse::Down(btn, x, y) => MouseEvent::Up(btn.into(), x, y, modifiers),
+        parser::Mouse::Up(btn, x, y) => MouseEvent::Up(btn.into(), x, y, modifiers),
+        parser::Mouse::Drag(btn, x, y) => MouseEvent::Drag(btn.into(), x, y, modifiers),
+        parser::Mouse::ScrollDown(x, y) => MouseEvent::ScrollUp(x, y, modifiers),
+        parser::Mouse::ScrollUp(x, y) => MouseEvent::ScrollDown(x, y, modifiers),
     }
 }
 
@@ -88,9 +75,14 @@ impl From<parser::KeyCode> for KeyCode {
 impl From<parser::Sequence> for Event {
     fn from(event: parser::Sequence) -> Self {
         match event {
-            parser::Sequence::Key(key, modifiers) => Event::Key(KeyEvent::new(KeyCode::from(key), KeyModifiers::from(modifiers))),
-            parser::Sequence::Mouse(mouse, modifiers) => Event::Mouse(from_mouse(mouse, KeyModifiers::from(modifiers))),
-            Sequence::CursorPosition(_, _) => { Event::Unknown }
+            parser::Sequence::Key(key, modifiers) => Event::Key(KeyEvent::new(
+                KeyCode::from(key),
+                KeyModifiers::from(modifiers),
+            )),
+            parser::Sequence::Mouse(mouse, modifiers) => {
+                Event::Mouse(from_mouse(mouse, KeyModifiers::from(modifiers)))
+            }
+            Sequence::CursorPosition(_, _) => Event::Unknown,
         }
     }
 }

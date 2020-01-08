@@ -8,7 +8,7 @@ pub(crate) use self::crossterm::BackendImpl;
 pub(crate) use self::termion::BackendImpl;
 
 #[cfg(feature = "pancurses-backend")]
-pub(crate) use self::curses::BackendImpl;
+pub(crate) use self::pancurses::BackendImpl;
 
 #[cfg(feature = "crossterm-backend")]
 mod crossterm;
@@ -20,8 +20,7 @@ mod termion;
 mod resize;
 
 #[cfg(feature = "pancurses-backend")]
-mod curses;
-
+mod pancurses;
 
 #[cfg(feature = "pancurses-backend")]
 mod anes_mappings;

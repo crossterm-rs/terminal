@@ -46,8 +46,10 @@ version = "0.14"
 
 [dependencies.pancurses]
 optional = true
-version = "0.16.1"
-git = "https://github.com/TimonPost/pancurses"
+#version = "0.16.1"
+#git = "https://github.com/TimonPost/pancurses"
+path = "../pancurses"
+features = ["wide"]
 
 #
 # UNIX dependencies

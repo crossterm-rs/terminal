@@ -235,8 +235,11 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             Action::DisableMouseCapture => {
                 self.buffer.write(DISABLE_MOUSE_CAPTURE.as_bytes())?;
             }
-            _ => {
-                // ScrollUp, ScrollDown, SetTerminalSize, EnableBlinking, DisableBlinking are not supported.
+            Action::SetTerminalSize(..)
+            | Action::EnableBlinking
+            | Action::DisableBlinking
+            | Action::ScrollUp(_)
+            | Action::ScrollDown(_) => {
                 Err(error::ErrorKind::ActionNotSupported(String::from(action)))?
             }
         };

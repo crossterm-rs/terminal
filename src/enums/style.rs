@@ -71,7 +71,7 @@ impl From<u8> for Color {
             15 => Color::Grey,
 
             // parsing: https://stackoverflow.com/questions/27159322/rgb-values-of-the-colors-in-the-ansi-extended-colors-index-17-255
-            _ if n > 15  && n < 232 => {
+            _ if n > 15 && n < 232 => {
                 let rgb_r = ((n - 16) / 36) * 51;
                 let rgb_g = (((n - 16) % 36) / 6) * 51;
                 let rgb_b = ((n - 16) % 6) * 51;

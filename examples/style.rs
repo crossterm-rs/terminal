@@ -1,10 +1,10 @@
 use std::io::Write;
 
-use terminal::{error, stdout, Action, Clear, Color, TerminalLock};
 use bitflags::_core::time::Duration;
 use std::thread;
+use terminal::{error, stdout, Action, Clear, Color, TerminalLock};
 
-fn test_color_values_matrix_16x16<W, F>(
+fn draw_color_values_matrix_16x16<W, F>(
     w: &mut TerminalLock<W>,
     title: &str,
     color: F,
@@ -25,7 +25,6 @@ where
 
         w.batch(Action::MoveCursorTo(idx * 3 + 3, 3))?;
         write!(w, "{}", format!("{:>width$}", idx, width = 3));
-        w.flush();
     }
 
     for row in 0..=15u16 {
@@ -33,14 +32,12 @@ where
 
         for col in 0..=15u16 {
             w.batch(Action::SetForegroundColor(color(col, row)))?;
-            write!(w, "=====");
+            write!(w, "███");
         }
-        w.flush();
 
         w.batch(Action::SetForegroundColor(Color::White))?;
         write!(w, "{}", format!("{:>width$} ..= ", row * 16, width = 3));
         write!(w, "{}", format!("{:>width$}", row * 16 + 15, width = 3));
-        w.flush();
     }
 
     w.flush_batch()?;
@@ -49,26 +46,26 @@ where
 }
 
 fn rgb<W: Write>(lock: &mut TerminalLock<W>) {
-    test_color_values_matrix_16x16(lock, "Color::Rgb values", |col, row| {
+    draw_color_values_matrix_16x16(lock, "Color::Rgb values", |col, row| {
         Color::AnsiValue((row * 16 + col) as u8)
     })
     .unwrap();
 }
 
 fn rgb_red_values<W: Write>(w: &mut TerminalLock<W>) -> error::Result<()> {
-    test_color_values_matrix_16x16(w, "Color::Rgb red values", |col, row| {
+    draw_color_values_matrix_16x16(w, "Color::Rgb red values", |col, row| {
         Color::Rgb((row * 16 + col) as u8, 0 as u8, 0)
     })
 }
 
 fn rgb_green_values<W: Write>(w: &mut TerminalLock<W>) -> error::Result<()> {
-    test_color_values_matrix_16x16(w, "Color::Rgb green values", |col, row| {
+    draw_color_values_matrix_16x16(w, "Color::Rgb green values", |col, row| {
         Color::Rgb(0, (row * 16 + col) as u8, 0)
     })
 }
 
 fn rgb_blue_values<W: Write>(w: &mut TerminalLock<W>) -> error::Result<()> {
-    test_color_values_matrix_16x16(w, "Color::Rgb blue values", |col, row| {
+    draw_color_values_matrix_16x16(w, "Color::Rgb blue values", |col, row| {
         Color::Rgb(0, 0, (row * 16 + col) as u8)
     })
 }
@@ -77,16 +74,6 @@ fn main() {
     let stdout = stdout();
     let mut lock = stdout.lock_mut().unwrap();
 
-    write!(lock, "abc");
-    lock.flush();
-
     rgb(&mut lock);
     thread::sleep(Duration::from_millis(5000))
-//    lock.act(Action::EnableRawMode).unwrap();
-//    lock.act(Action::EnterAlternateScreen).unwrap();
-//
-//    lock.act(Action::SetForegroundColor(Color::Red)).unwrap();
-//    lock.act(Action::SetBackgroundColor(Color::Green)).unwrap();
-
-
 }
