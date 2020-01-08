@@ -1,10 +1,7 @@
 use std::{
-    cell::RefCell,
     io::{self, Stderr, Stdout, Write},
     sync::{RwLock, RwLockWriteGuard},
 };
-
-use bitflags::_core::cell::RefMut;
 
 use crate::{
     backend::{Backend as _, BackendImpl},
@@ -56,20 +53,14 @@ pub fn stderr() -> Terminal<Stderr> {
 pub struct Terminal<W: Write> {
     // Access to the `Terminal` internals is ONLY allowed if this lock is acquired,
     // use `lock_mut()`.
-    lock: RwLock<()>,
-    // The internal buffer on which operations are performed and written to.
-    buffer: RefCell<W>,
-    // The selected backend implementation.
-    backend: RefCell<BackendImpl<W>>,
+    lock: RwLock<BackendImpl<W>>,
 }
 
 impl<W: Write> Terminal<W> {
     /// Creates a custom buffered [Terminal](struct.Terminal.html) with the given buffer.
     pub fn custom(buffer: W) -> Terminal<W> {
         Terminal {
-            lock: RwLock::new(()),
-            backend: RefCell::new(BackendImpl::create()),
-            buffer: RefCell::new(buffer),
+            lock: RwLock::new(BackendImpl::create(buffer)),
         }
     }
 
@@ -79,10 +70,7 @@ impl<W: Write> Terminal<W> {
     /// The lock is released when the returned lock goes out of scope.
     pub fn lock_mut(&self) -> error::Result<TerminalLock<'_, W>> {
         if let Ok(lock) = self.lock.try_write() {
-            let backend = self.backend.borrow_mut();
-            let buffer = self.buffer.borrow_mut();
-
-            Ok(TerminalLock::new(lock, backend, buffer))
+            Ok(TerminalLock::new(lock))
         } else {
             Err(error::ErrorKind::AttemptToAcquireLock(
                 "`Terminal` can only be mutably borrowed once.".to_string(),
@@ -135,48 +123,40 @@ impl<W: Write> Terminal<W> {
 impl<'a, W: Write> Write for Terminal<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let mut lock = self.lock_mut().unwrap();
-        lock.buffer.write(buf)
+        lock.backend.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
         let mut lock = self.lock_mut().unwrap();
-        lock.buffer.flush()
+        lock.backend.flush()
     }
 }
 
 /// A mutable lock to the [Terminal](struct.Terminal.html).
 pub struct TerminalLock<'a, W: Write> {
-    _lock: RwLockWriteGuard<'a, ()>,
-    buffer: RefMut<'a, W>,
-    backend: RefMut<'a, BackendImpl<W>>,
+    backend: RwLockWriteGuard<'a, BackendImpl<W>>,
 }
 
 impl<'a, W: Write> TerminalLock<'a, W> {
-    pub fn new(
-        lock: RwLockWriteGuard<'a, ()>,
-        backend: RefMut<'a, BackendImpl<W>>,
-        buffer: RefMut<'a, W>,
-    ) -> TerminalLock<'a, W> {
+    pub fn new(locked_backend: RwLockWriteGuard<'a, BackendImpl<W>>) -> TerminalLock<'a, W> {
         TerminalLock {
-            _lock: lock,
-            buffer,
-            backend,
+            backend: locked_backend,
         }
     }
 
     /// See [Terminal::act](struct.Terminal.html#method.act).
     pub fn act(&mut self, action: Action) -> error::Result<()> {
-        self.backend.act(action, &mut self.buffer)
+        self.backend.act(action)
     }
 
     /// See [Terminal::batch](struct.Terminal.html#method.batch).
     pub fn batch(&mut self, action: Action) -> error::Result<()> {
-        self.backend.batch(action, &mut self.buffer)
+        self.backend.batch(action)
     }
 
     /// See [Terminal::flush_batch](struct.Terminal.html#method.flush_batch).
     pub fn flush_batch(&mut self) -> error::Result<()> {
-        self.backend.flush_batch(&mut self.buffer)
+        self.backend.flush_batch()
     }
 
     /// See [Terminal::get](struct.Terminal.html#method.get).
@@ -187,11 +167,11 @@ impl<'a, W: Write> TerminalLock<'a, W> {
 
 impl<'a, W: Write> Write for TerminalLock<'a, W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.buffer.write(buf)
+        self.backend.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.buffer.flush()
+        self.backend.flush()
     }
 }
 
