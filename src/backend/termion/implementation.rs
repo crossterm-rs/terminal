@@ -99,7 +99,7 @@ impl<W: Write> BackendImpl<W> {
             Color::DarkMagenta => self.w_color(color::Magenta, is_fg),
             Color::Cyan => self.w_color(color::LightCyan, is_fg),
             Color::DarkCyan => self.w_color(color::Cyan, is_fg),
-            Color::White => self.w_color(color::LightWhite, is_fg),
+            Color::White => self.w_color(color::White, is_fg),
             Color::Grey => self.w_color(color::LightWhite, is_fg),
             Color::Rgb(r, g, b) => self.w_color(color::Rgb(r, g, b), is_fg),
             Color::AnsiValue(val) => self.w_color(color::AnsiValue(val), is_fg),

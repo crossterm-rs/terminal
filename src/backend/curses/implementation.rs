@@ -3,15 +3,14 @@ use crate::backend::Backend;
 use crate::{error, Action, Attribute, Clear, Color, Event, MouseButton, Retrieved, Value, KeyEvent, KeyModifiers, KeyCode};
 use pancurses::{COLORS, ToChtype, SCREEN};
 use std::collections::HashMap;
-use std::io;
+use std::{io, result};
 use std::io::{Write, Error, ErrorKind};
-use std::marker::PhantomData;
 use std::sync::RwLock;
 
 const MOUSE_EVENT_MASK: u32 = pancurses::ALL_MOUSE_EVENTS | pancurses::REPORT_MOUSE_POSITION;
 
 pub struct BackendImpl<W: Write> {
-    _phantom: PhantomData<W>,
+    buffer: W,
     window: pancurses::Window,
 
     last_mouse_button: RwLock<Option<MouseButton>>,
@@ -26,29 +25,31 @@ pub struct BackendImpl<W: Write> {
     pub(crate) key_codes: HashMap<i32, Event>,
 
     // bg, fg
-    current_style: (Color, Color)
+    current_style: (Color, Color),
 }
 
 impl<W: Write> BackendImpl<W> {
     /// Prints the given string-like value into the window by printing each
-    pub fn print<S: AsRef<str>>(&mut self, asref: S) {
+    pub fn print<S: AsRef<str>>(&mut self, asref: S) -> error::Result<()> {
         // Here we want to
         if cfg!(windows) {
             // PDCurses does an extra intermediate CString allocation, so we just
             // print out each character one at a time to avoid that.
-            asref.as_ref().chars().all(|c| self.print_char(c));
+            asref.as_ref().chars().all(|c| self.print_char(c).is_ok());
         } else {
             // NCurses, it seems, doesn't do the intermediate allocation and also uses
             // a faster routine for printing a whole string at once.
             self.window.printw(asref.as_ref());
         }
+
+        Ok(())
     }
 
     /// Prints the given character into the window.
-    pub fn print_char<T: ToChtype>(&mut self, character: T) -> bool {
+    pub fn print_char<T: ToChtype>(&mut self, character: T) -> error::Result<()> {
         self.window.addch(character);
 
-        true
+        Ok(())
     }
 
     pub fn update_input_buffer(&self, btn: Event) {
@@ -116,7 +117,7 @@ impl<W: Write> BackendImpl<W> {
 }
 
 impl<W: Write> Backend<W> for BackendImpl<W> {
-    fn create() -> Self {
+    fn create(buffer: W) -> Self {
         use std::fs::File;
         use std::ffi::CStr;
         use std::os::unix::io::IntoRawFd;
@@ -147,23 +148,23 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
         pancurses::init_pair(0 , -1, -1);
 
         BackendImpl {
-            _phantom: PhantomData,
             window,
             last_mouse_button: RwLock::new(None),
             stored_event: RwLock::new(None),
             color_pairs: map,
             screen_ptr: screen,
             key_codes: initialize_keymap(),
-            current_style: (Color::Reset, Color::Reset)
+            current_style: (Color::Reset, Color::Reset),
+            buffer,
         }
     }
 
-    fn act(&mut self, action: Action, buffer: &mut W) -> error::Result<()> {
-        self.batch(action, buffer)?;
-        self.flush_batch(buffer)
+    fn act(&mut self, action: Action) -> error::Result<()> {
+        self.batch(action)?;
+        self.flush_batch()
     }
 
-    fn batch(&mut self, action: Action, buffer: &mut W) -> error::Result<()> {
+    fn batch(&mut self, action: Action) -> error::Result<()> {
         let a = match action {
             Action::MoveCursorTo(x, y) => self.window.mv(y as i32, x as i32),
             Action::HideCursor => pancurses::curs_set(0) as i32,
@@ -184,8 +185,8 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             Action::ScrollDown(_) => 0, // TODO, not supported by pancurses
             Action::EnableRawMode => {
                 pancurses::noecho();
-                pancurses::raw()
-//                pancurses::nl()
+                pancurses::raw();
+                pancurses::nl()
             }
             Action::DisableRawMode => {
                 pancurses::echo();
@@ -271,7 +272,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
         Ok(())
     }
 
-    fn flush_batch(&mut self, buffer: &mut W) -> error::Result<()> {
+    fn flush_batch(&mut self) -> error::Result<()> {
         self.window.refresh();
         Ok(())
     }
@@ -313,6 +314,20 @@ impl<W: Write> Drop for BackendImpl<W> {
         pancurses::endwin();
     }
 }
+
+impl<W: Write> Write for BackendImpl<W> {
+    fn write(&mut self, buf: &[u8]) -> result::Result<usize, io::Error> {
+        let string = std::str::from_utf8(buf).unwrap();
+        self.print(string).unwrap();
+        Ok(string.len())
+    }
+
+    fn flush(&mut self) -> result::Result<(), io::Error> {
+        self.window.refresh();
+        Ok(())
+    }
+}
+
 
 fn initialize_keymap() -> HashMap<i32, Event> {
     let mut map = HashMap::default();

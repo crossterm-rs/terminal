@@ -77,8 +77,6 @@ pub enum Action {
     SetAttribute(Attribute),
     /// Resets the colors back to default.
     ResetColor,
-
-    Print(T)
 }
 
 impl From<Action> for String {
