@@ -239,7 +239,7 @@ impl<W: Write> super::BackendImpl<W> {
 
     fn map_mouse_event(&self) -> Event {
         let mut mevent = match pancurses::getmouse() {
-            Err(code) => return Event::Unknown,
+            Err(_) => return Event::Unknown,
             Ok(event) => event,
         };
 
@@ -389,7 +389,6 @@ impl<W: Write> super::BackendImpl<W> {
             | pancurses::BUTTON2_TRIPLE_CLICKED => MouseButton::Middle,
             pancurses::BUTTON3_RELEASED
             | pancurses::BUTTON3_PRESSED
-            | pancurses::BUTTON3_CLICKED
             | pancurses::BUTTON3_CLICKED
             | pancurses::BUTTON3_DOUBLE_CLICKED
             | pancurses::BUTTON3_TRIPLE_CLICKED => MouseButton::Right,

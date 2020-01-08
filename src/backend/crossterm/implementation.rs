@@ -38,8 +38,8 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             Action::SetTerminalSize(column, row) => buffer.queue(terminal::SetSize(column, row))?,
             Action::ScrollUp(rows) => buffer.queue(terminal::ScrollUp(rows))?,
             Action::ScrollDown(rows) => buffer.queue(terminal::ScrollDown(rows))?,
-            Action::EnterAlternateScreen => buffer.queue(terminal::EnterAlternateScreen)?,
-            Action::LeaveAlternateScreen => buffer.queue(terminal::LeaveAlternateScreen)?,
+            Action::EnterAlternateScreen => { buffer.queue(terminal::EnterAlternateScreen)?; buffer },
+            Action::LeaveAlternateScreen => { buffer.queue(terminal::LeaveAlternateScreen)?; buffer },
             Action::SetForegroundColor(color) => {
                 buffer.queue(style::SetForegroundColor(style::Color::from(color)))?
             }

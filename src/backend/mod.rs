@@ -6,7 +6,6 @@ use crate::{error, Action, Retrieved, Value};
 pub(crate) use self::crossterm::BackendImpl;
 #[cfg(feature = "termion-backend")]
 pub(crate) use self::termion::BackendImpl;
-
 #[cfg(feature = "pancurses-backend")]
 pub(crate) use self::pancurses::BackendImpl;
 

@@ -1,3 +1,4 @@
+use crate::backend::pancurses::constants;
 use crate::{
     backend::{
         pancurses::{current_style::CurrentStyle, mapping::find_closest},
@@ -8,42 +9,55 @@ use crate::{
 };
 use pancurses::{ToChtype, Window, COLORS};
 use std::{
-    collections::HashMap,
-    ffi::CStr,
-    fs::File,
-    io,
-    io::{Error, ErrorKind, Write},
-    os::unix::io::IntoRawFd,
-    result,
+    collections::HashMap, ffi::CStr, fs::File, io, io::Write, os::unix::io::IntoRawFd, result,
     sync::RwLock,
 };
 
+macro_rules! check {
+    ($expr:expr) => (match $expr {
+         0 => {},
+        -1 => {
+            return Err($crate::error::ErrorKind::IoError(std::io::Error::new(std::io::ErrorKind::Other, "Some error occurred while executing the action")))
+        }
+        3 => {
+            return Err($crate::error::ErrorKind::ActionNotSupported("The action is not supported by pancurses. Either work around it or use an other backend.".to_string()))
+        }
+        _ => {}
+    });
+    ($expr:expr,) => ($crate::r#check!($expr));
+}
+
 #[derive(Default)]
 struct InputCache {
+    // The mouse on event doesn't have a button,
+    // so we have to save it with the mouse down event
     last_mouse_button: Option<MouseButton>,
+
     stored_event: Option<Event>,
 }
 
 pub struct BackendImpl<W: Write> {
-    buffer: W,
+    _buffer: W,
+    // The pancurses window.
     window: pancurses::Window,
 
+    // The cache needed to parse input.
     input_cache: RwLock<InputCache>,
 
     // ncurses stores color values in pairs (fg, bg) color.
     // We store those pairs in this hashmap on order to keep track of the pairs we initialized.
     color_pairs: HashMap<i16, i32>,
 
+    // Mapped key codes.
     pub(crate) key_codes: HashMap<i32, Event>,
 
-    // bg, fg
+    // This is necessary to know the style that is currently set.
     current_style: CurrentStyle,
 }
 
 impl<W: Write> BackendImpl<W> {
-    /// Prints the given string-like value into the window by printing each
-    pub fn print<S: AsRef<str>>(&mut self, asref: S) -> error::Result<()> {
-        // Here we want to
+    /// Prints the given string-like value into the window.
+    fn print<S: AsRef<str>>(&mut self, asref: S) -> error::Result<()> {
         if cfg!(windows) {
             // PDCurses does an extra intermediate CString allocation, so we just
             // print out each character one at a time to avoid that.
@@ -58,45 +72,44 @@ impl<W: Write> BackendImpl<W> {
     }
 
     /// Prints the given character into the window.
-    pub fn print_char<T: ToChtype>(&mut self, character: T) -> error::Result<()> {
+    fn print_char<T: ToChtype>(&mut self, character: T) -> error::Result<()> {
         self.window.addch(character);
-
         Ok(())
     }
 
-    pub fn update_input_buffer(&self, btn: Event) {
+    pub(crate) fn update_input_buffer(&self, btn: Event) {
         let mut lock = self.input_cache.write().unwrap();
         lock.stored_event = Some(btn);
     }
 
-    pub fn try_take(&self) -> Option<Event> {
+    fn try_take(&self) -> Option<Event> {
         self.input_cache.write().unwrap().stored_event.take()
     }
 
-    pub fn update_last_btn(&self, btn: MouseButton) {
+    pub(crate) fn update_last_btn(&self, btn: MouseButton) {
         let mut lock = self.input_cache.write().unwrap();
         lock.last_mouse_button = Some(btn);
     }
 
-    pub fn get_last_btn(&self) -> Option<MouseButton> {
+    pub(crate) fn get_last_btn(&self) -> Option<MouseButton> {
         self.input_cache.read().unwrap().last_mouse_button.clone()
     }
 
-    pub fn store_fg(&mut self, fg_color: Color) -> i32 {
+    pub(crate) fn store_fg(&mut self, fg_color: Color) -> i32 {
         let closest_fg_color = find_closest(fg_color, COLORS() as i16);
         let closest_bg_color = find_closest(self.current_style.background, COLORS() as i16);
 
         self.get_or_insert(closest_fg_color, closest_fg_color, closest_bg_color)
     }
 
-    pub fn store_bg(&mut self, bg_color: Color) -> i32 {
+    fn store_bg(&mut self, bg_color: Color) -> i32 {
         let closest_fg_color = find_closest(self.current_style.foreground, COLORS() as i16);
         let closest_bg_color = find_closest(bg_color, COLORS() as i16);
 
         self.get_or_insert(closest_bg_color, closest_fg_color, closest_bg_color)
     }
 
-    pub fn get_or_insert(&mut self, key: i16, fg_color: i16, bg_color: i16) -> i32 {
+    fn get_or_insert(&mut self, key: i16, fg_color: i16, bg_color: i16) -> i32 {
         if self.color_pairs.contains_key(&key) {
             self.color_pairs[&key]
         } else {
@@ -136,7 +149,7 @@ fn init_custom_window() -> Window {
     // By default pancurses use stdout.
     // We can change this by calling `new_term` with an FILE pointer to the source.
     // Which is /dev/tty in our case.
-    let file = File::open("/dev/tty").unwrap();
+    let file = File::create("/dev/tty").unwrap();
 
     let c_file = unsafe {
         libc::fdopen(
@@ -171,7 +184,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
         ::std::env::set_var("ESCDELAY", "25");
 
         #[cfg(windows)]
-        let window = init_windows_window();
+        let window = init_stdout_window();
 
         #[cfg(unix)]
         let window = init_custom_window();
@@ -180,10 +193,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
         window.keypad(true);
         pancurses::start_color();
         pancurses::use_default_colors();
-        pancurses::mousemask(
-            pancurses::ALL_MOUSE_EVENTS | pancurses::REPORT_MOUSE_POSITION,
-            ::std::ptr::null_mut(),
-        );
+        pancurses::mousemask(constants::MOUSE_EVENT_MASK, ::std::ptr::null_mut());
 
         // Initialize the default fore and background.
         let mut map = HashMap::<i16, i32>::new();
@@ -196,7 +206,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             color_pairs: map,
             key_codes: initialize_keymap(),
             current_style: CurrentStyle::new(),
-            buffer,
+            _buffer: buffer,
         }
     }
 
@@ -207,73 +217,72 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
 
     #[warn(unused_assignments)]
     fn batch(&mut self, action: Action) -> error::Result<()> {
-        let mut r = 0;
-
         match action {
             Action::MoveCursorTo(x, y) => {
-                r = self.window.mv(y as i32, x as i32);
+                // Coordinates are reversed here
+                check!(self.window.mv(y as i32, x as i32));
             }
             Action::HideCursor => {
-                r = pancurses::curs_set(0) as i32;
+                check!(pancurses::curs_set(0));
             }
             Action::ShowCursor => {
-                r = pancurses::curs_set(1) as i32;
+                check!(pancurses::curs_set(1));
             }
             Action::EnableBlinking => {
-                r = pancurses::set_blink(true);
+                check!(pancurses::set_blink(true));
             }
             Action::DisableBlinking => {
-                r = pancurses::set_blink(false);
+                check!(pancurses::set_blink(false));
             }
             Action::ClearTerminal(clear_type) => {
-                r = match clear_type {
+                check!(match clear_type {
                     Clear::All => self.window.clear(),
                     Clear::FromCursorDown => self.window.clrtobot(),
                     Clear::UntilNewLine => self.window.clrtoeol(),
                     Clear::FromCursorUp => 3, // TODO, not supported by pancurses
                     Clear::CurrentLine => 3,  // TODO, not supported by pancurses
-                };
+                });
             }
             Action::SetTerminalSize(cols, rows) => {
                 pancurses::resize_term(rows as i32, cols as i32);
             }
             Action::EnableRawMode => {
-                r = pancurses::noecho();
-                r = pancurses::raw();
-                r = pancurses::nonl();
+                check!(pancurses::noecho());
+                check!(pancurses::raw());
+                check!(pancurses::nonl());
             }
             Action::DisableRawMode => {
-                r = pancurses::echo();
-                r = pancurses::noraw();
-                r = pancurses::nl();
+                check!(pancurses::echo());
+                check!(pancurses::noraw());
+                check!(pancurses::nl());
             }
             Action::EnableMouseCapture => {
-                print!("\x1B[?1002h");
-                io::stdout().flush()?;
+                self._buffer.write(constants::ENABLE_MOUSE_CAPTURE.as_bytes())?;
+                self._buffer.flush()?;
             }
             Action::DisableMouseCapture => {
-                print!("\x1B[?1002l");
-                io::stdout().flush().expect("could not flush stdout");
+                self._buffer.write(constants::DISABLE_MOUSE_CAPTURE.as_bytes())?;
+                self._buffer.flush()?;
             }
             Action::ResetColor => {
                 let style = pancurses::COLOR_PAIR(0 as pancurses::chtype);
-                r = self.window.attron(style);
-                r = self.window.attroff(self.current_style.attributes);
-                r = self.window.refresh();
+                check!(self.window.attron(style));
+                check!(self.window.attroff(self.current_style.attributes));
+                check!(self.window.refresh());
             }
             Action::SetForegroundColor(color) => {
                 self.current_style.foreground = color;
                 let index = self.store_fg(color);
                 let style = pancurses::COLOR_PAIR(index as pancurses::chtype);
-                r = self.window.attron(style);
-                r = self.window.refresh();
+                check!(self.window.attron(style));
+                check!(self.window.refresh());
             }
             Action::SetBackgroundColor(color) => {
                 self.current_style.background = color;
                 let index = self.store_bg(color);
                 let style = pancurses::COLOR_PAIR(index as pancurses::chtype);
-                r = self.window.attron(style);
-                r = self.window.refresh();
+                check!(self.window.attron(style));
+                check!(self.window.refresh());
             }
             Action::SetAttribute(attr) => {
                 let no_match1 = match attr {
@@ -287,10 +296,10 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                     Attribute::Crossed => Some(pancurses::Attribute::Strikeout),
                     Attribute::Reversed => Some(pancurses::Attribute::Reverse),
                     Attribute::Conceal => Some(pancurses::Attribute::Invisible),
-                    _ => None, // OFF attributes and Fraktur, NormalIntensity, NormalIntensity, Framed
+                    _ => None, // OFF attributes and Fraktur, NormalIntensity, Framed
                 }
                 .map(|attribute| {
-                    r = self.window.attron(attribute);
+                    self.window.attron(attribute);
                     self.current_style.attributes = self.current_style.attributes | attribute;
                 });
 
@@ -302,35 +311,24 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                     Attribute::CrossedOff => Some(pancurses::Attribute::Strikeout),
                     Attribute::ReversedOff => Some(pancurses::Attribute::Reverse),
                     Attribute::ConcealOff => Some(pancurses::Attribute::Invisible),
-                    _ => None, // OFF attributes and Fraktur, NormalIntensity, NormalIntensity, Framed
+                    _ => None, // OFF attributes and Fraktur, NormalIntensity, Framed
                 }
                 .map(|attribute| {
-                    r = self.window.attroff(attribute);
+                    self.window.attroff(attribute);
                     self.current_style.attributes = self.current_style.attributes ^ attribute;
                 });
 
                 if no_match1.is_none() && no_match2.is_none() {
                     return Err(error::ErrorKind::AttributeNotSupported(String::from(attr)))?;
-                } else {
-                    return Ok(());
                 }
             }
             Action::EnterAlternateScreen
             | Action::LeaveAlternateScreen
             | Action::ScrollUp(_)
-            | Action::ScrollDown(_) => r = 3,
+            | Action::ScrollDown(_) => check!(3),
         };
 
-        match r {
-            0 => Ok(()),
-            -1 => {
-                Err(error::ErrorKind::IoError(Error::new(ErrorKind::Other, "Some error occurred while executing the action")))
-            }
-            3 => {
-                Err(error::ErrorKind::ActionNotSupported("The action is not supported by pancurses. Either work around it or use an other backend.".to_string()))
-            }
-            _ => Ok(())
-        }
+        Ok(())
     }
 
     fn flush_batch(&mut self) -> error::Result<()> {
@@ -454,5 +452,23 @@ where
         };
 
         target.insert(code, event);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::error;
+
+    fn a(return_val: i32) -> error::Result<()> {
+        check!(return_val);
+        Ok(())
+    }
+
+    #[test]
+    fn test_check_macro() {
+        assert!(a(0).is_ok());
+        assert!(a(1).is_ok());
+        assert!(a(3).is_err());
+        assert!(a(-1).is_err());
     }
 }
