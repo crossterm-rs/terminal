@@ -29,11 +29,11 @@ use crate::{
 
 /// A sequence of escape codes to enable terminal mouse support.
 /// We use this directly instead of using `MouseTerminal` from termion.
-const ENABLE_MOUSE_CAPTURE: &'static str = "\x1B[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
+const ENABLE_MOUSE_CAPTURE: &str = "\x1B[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
 
 /// A sequence of escape codes to disable terminal mouse support.
 /// We use this directly instead of using `MouseTerminal` from termion.
-const DISABLE_MOUSE_CAPTURE: &'static str = "\x1B[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l";
+const DISABLE_MOUSE_CAPTURE: &str = "\x1B[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l";
 
 /// Writer which writes either an foreground or background color escape code to the formatter.
 struct ColorCodeWriter<T: color::Color> {
@@ -82,7 +82,7 @@ impl<W: Write> BackendImpl<W> {
     }
 
     /// Format the given color and write it to the given buffer.
-    pub fn f_color<'a>(&mut self, color: Color, is_fg: bool) -> io::Result<()> {
+    pub fn f_color(&mut self, color: Color, is_fg: bool) -> io::Result<()> {
         match color {
             Color::Reset => self.w_color(color::Reset, is_fg),
             Color::Black => self.w_color(color::Black, is_fg),
@@ -144,9 +144,9 @@ impl<W: Write> BackendImpl<W> {
             Attribute::Reset => self.w_display(&style::Reset)?,
             _ => {
                 // ConcealOff, ConcealOff, Fraktur, NormalIntensity not supported.
-                Err(error::ErrorKind::AttributeNotSupported(String::from(
+                return Err(error::ErrorKind::AttributeNotSupported(String::from(
                     attribute,
-                )))?
+                )));
             }
         };
 
@@ -225,23 +225,23 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                 self.is_raw_mode_enabled = true;
             }
             Action::DisableRawMode => {
-                if let Some(_) = &self.raw_buffer {
+                if self.raw_buffer.is_some() {
                     self.raw_buffer = None;
                     self.is_raw_mode_enabled = false;
                 }
             }
             Action::EnableMouseCapture => {
-                self.buffer.write(ENABLE_MOUSE_CAPTURE.as_bytes())?;
+                self.buffer.write_all(ENABLE_MOUSE_CAPTURE.as_bytes())?;
             }
             Action::DisableMouseCapture => {
-                self.buffer.write(DISABLE_MOUSE_CAPTURE.as_bytes())?;
+                self.buffer.write_all(DISABLE_MOUSE_CAPTURE.as_bytes())?;
             }
             Action::SetTerminalSize(..)
             | Action::EnableBlinking
             | Action::DisableBlinking
             | Action::ScrollUp(_)
             | Action::ScrollDown(_) => {
-                Err(error::ErrorKind::ActionNotSupported(String::from(action)))?
+                return Err(error::ErrorKind::ActionNotSupported(String::from(action)))
             }
         };
 
@@ -288,7 +288,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                             }
                         };
                         return Ok(event.map_or(Retrieved::Event(None), |event| {
-                            Retrieved::Event(Some(Event::from(event)))
+                            Retrieved::Event(Some(event))
                         }));
                     };
                 };
