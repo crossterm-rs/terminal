@@ -13,6 +13,9 @@ use std::{
     sync::RwLock,
 };
 
+/// Checks if the expression result is an error.
+/// Returns an Error based on the error code.
+/// Does nothing if there's no error.
 macro_rules! check {
     ($expr:expr) => (match $expr {
          0 => {},
@@ -24,7 +27,6 @@ macro_rules! check {
         }
         _ => {}
     });
-    ($expr:expr,) => ($crate::r#check!($expr));
 }
 
 #[derive(Default)]
@@ -37,8 +39,9 @@ struct InputCache {
 }
 
 pub struct BackendImpl<W: Write> {
-    _buffer: W,
-    // The pancurses window.
+    buffer: W,
+    // We can batch commands in the pancurses window.
+    // The moment we call `refresh` these are executed.
     window: pancurses::Window,
 
     // The cache needed to parse input.
@@ -48,7 +51,7 @@ pub struct BackendImpl<W: Write> {
     // We store those pairs in this hashmap on order to keep track of the pairs we initialized.
     color_pairs: HashMap<i16, i32>,
 
-    // Mapped key codes.
+    // Some key code definitions from which we can construct events.
     pub(crate) key_codes: HashMap<i32, Event>,
 
     // This is necessary to know the style that is currently set.
@@ -77,38 +80,46 @@ impl<W: Write> BackendImpl<W> {
         Ok(())
     }
 
-    pub(crate) fn update_input_buffer(&self, btn: Event) {
+    /// Updates the stored event.
+    pub(crate) fn update_stored_event(&self, btn: Event) {
         let mut lock = self.input_cache.write().unwrap();
         lock.stored_event = Some(btn);
     }
 
+    /// Tries to read event from temporary cache.
     fn try_take(&self) -> Option<Event> {
         self.input_cache.write().unwrap().stored_event.take()
     }
 
+    /// Updates the last used button with a new button.
     pub(crate) fn update_last_btn(&self, btn: MouseButton) {
         let mut lock = self.input_cache.write().unwrap();
         lock.last_mouse_button = Some(btn);
     }
 
-    pub(crate) fn get_last_btn(&self) -> Option<MouseButton> {
+    /// Retrieves the last printed mouse button.
+    pub(crate) fn last_btn(&self) -> Option<MouseButton> {
         self.input_cache.read().unwrap().last_mouse_button.clone()
     }
 
-    pub(crate) fn store_fg(&mut self, fg_color: Color) -> i32 {
+    /// Retrieves the foreground color index.
+    pub(crate) fn get_fg_index(&mut self, fg_color: Color) -> i32 {
         let closest_fg_color = find_closest(fg_color, COLORS() as i16);
         let closest_bg_color = find_closest(self.current_style.background, COLORS() as i16);
 
         self.get_or_insert(closest_fg_color, closest_fg_color, closest_bg_color)
     }
 
-    fn store_bg(&mut self, bg_color: Color) -> i32 {
+    /// Retrieves the background color index.
+    fn get_bg_index(&mut self, bg_color: Color) -> i32 {
         let closest_fg_color = find_closest(self.current_style.foreground, COLORS() as i16);
         let closest_bg_color = find_closest(bg_color, COLORS() as i16);
 
         self.get_or_insert(closest_bg_color, closest_fg_color, closest_bg_color)
     }
 
+    /// Retrieves the color pair index, if the given color pair doesn't exist yet,
+    /// it will be created and the index will be returned.
     fn get_or_insert(&mut self, key: i16, fg_color: i16, bg_color: i16) -> i32 {
         if self.color_pairs.contains_key(&key) {
             self.color_pairs[&key]
@@ -121,6 +132,7 @@ impl<W: Write> BackendImpl<W> {
         }
     }
 
+    /// Returns a new color pair index.
     fn new_color_pair_index(&mut self) -> i32 {
         let n = 1 + self.color_pairs.len() as i32;
 
@@ -138,9 +150,8 @@ impl<W: Write> BackendImpl<W> {
 }
 
 fn init_stdout_window() -> Window {
-    // For windows we only support the default pancurses initialisation.
-    // By default pancurses uses stdout.
-    // TODO: support using `newterm` like `init_unix_window` so that we are not depended off stdout.
+    // Windows currently will only work on stdout because of this default pancurses initialisation.
+    // TODO: support using `newterm` like `init_unix_window` so that we are not depended on stdout.
     pancurses::initscr()
 }
 
@@ -206,7 +217,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             color_pairs: map,
             key_codes: initialize_keymap(),
             current_style: CurrentStyle::new(),
-            _buffer: buffer,
+            buffer,
         }
     }
 
@@ -215,7 +226,6 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
         self.flush_batch()
     }
 
-    #[warn(unused_assignments)]
     fn batch(&mut self, action: Action) -> error::Result<()> {
         match action {
             Action::MoveCursorTo(x, y) => {
@@ -257,12 +267,14 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                 check!(pancurses::nl());
             }
             Action::EnableMouseCapture => {
-                self._buffer.write(constants::ENABLE_MOUSE_CAPTURE.as_bytes())?;
-                self._buffer.flush()?;
+                self.buffer
+                    .write(constants::ENABLE_MOUSE_CAPTURE.as_bytes())?;
+                self.buffer.flush()?;
             }
             Action::DisableMouseCapture => {
-                self._buffer.write(constants::DISABLE_MOUSE_CAPTURE.as_bytes())?;
-                self._buffer.flush()?;
+                self.buffer
+                    .write(constants::DISABLE_MOUSE_CAPTURE.as_bytes())?;
+                self.buffer.flush()?;
             }
             Action::ResetColor => {
                 let style = pancurses::COLOR_PAIR(0 as pancurses::chtype);
@@ -272,14 +284,14 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             }
             Action::SetForegroundColor(color) => {
                 self.current_style.foreground = color;
-                let index = self.store_fg(color);
+                let index = self.get_fg_index(color);
                 let style = pancurses::COLOR_PAIR(index as pancurses::chtype);
                 check!(self.window.attron(style));
                 check!(self.window.refresh());
             }
             Action::SetBackgroundColor(color) => {
                 self.current_style.background = color;
-                let index = self.store_bg(color);
+                let index = self.get_bg_index(color);
                 let style = pancurses::COLOR_PAIR(index as pancurses::chtype);
                 check!(self.window.attron(style));
                 check!(self.window.refresh());
@@ -377,6 +389,7 @@ impl<W: Write> Write for BackendImpl<W> {
     fn write(&mut self, buf: &[u8]) -> result::Result<usize, io::Error> {
         let string = std::str::from_utf8(buf).unwrap();
         let len = string.len();
+        // We need to write strings to pancurses window instead of directly to the buffer.
         self.print(string).unwrap();
         Ok(len)
     }

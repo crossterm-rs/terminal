@@ -21,7 +21,6 @@ where
     for idx in 0..=15 {
         w.batch(Action::MoveCursorTo(1, idx + 4))?;
         write!(w, "{}", format!("{:>width$}", idx, width = 2));
-        w.flush();
 
         w.batch(Action::MoveCursorTo(idx * 3 + 3, 3))?;
         write!(w, "{}", format!("{:>width$}", idx, width = 3));
@@ -68,12 +67,4 @@ fn rgb_blue_values<W: Write>(w: &mut TerminalLock<W>) -> error::Result<()> {
     draw_color_values_matrix_16x16(w, "Color::Rgb blue values", |col, row| {
         Color::Rgb(0, 0, (row * 16 + col) as u8)
     })
-}
-
-fn main() {
-    let stdout = stdout();
-    let mut lock = stdout.lock_mut().unwrap();
-
-    rgb(&mut lock);
-    thread::sleep(Duration::from_millis(5000))
 }

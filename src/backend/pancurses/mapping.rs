@@ -267,7 +267,7 @@ impl<W: Write> super::BackendImpl<W> {
         if mevent.bstate == pancurses::REPORT_MOUSE_POSITION as mmask_t {
             // The event is either a mouse drag event,
             // or a weird double-release event. :S
-            self.get_last_btn()
+            self.last_btn()
                 .map(|btn| Event::Mouse(MouseEvent::Drag(btn, x, y, modifiers)))
                 .unwrap_or_else(|| {
                     // We got a mouse drag, but no last mouse pressed?
@@ -289,7 +289,7 @@ impl<W: Write> super::BackendImpl<W> {
                         if event.is_none() {
                             event = Some(e);
                         } else {
-                            self.update_input_buffer(Event::Mouse(e));
+                            self.update_stored_event(Event::Mouse(e));
                         }
                     },
                     x,
