@@ -4,8 +4,8 @@ pub(crate) const MOUSE_EVENT_MASK: u32 =
 
 /// A sequence of escape codes to enable terminal mouse support.
 /// We use this directly instead of using `MouseTerminal` from termion.
-pub(crate) const ENABLE_MOUSE_CAPTURE: &'static str = "\x1B[?1002h";
+pub(crate) const ENABLE_MOUSE_CAPTURE: &str = "\x1B[?1002h";
 
 /// A sequence of escape codes to disable terminal mouse support.
 /// We use this directly instead of using `MouseTerminal` from termion.
-pub(crate) const DISABLE_MOUSE_CAPTURE: &'static str = "\x1B[?1002l";
+pub(crate) const DISABLE_MOUSE_CAPTURE: &str = "\x1B[?1002l";

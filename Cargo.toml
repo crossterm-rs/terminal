@@ -46,9 +46,7 @@ version = "0.14"
 
 [dependencies.pancurses]
 optional = true
-#version = "0.16.1"
-#git = "https://github.com/TimonPost/pancurses"
-path = "../pancurses"
+git = "https://github.com/TimonPost/pancurses"
 features = ["wide"]
 
 #

@@ -99,7 +99,7 @@ impl<W: Write> BackendImpl<W> {
 
     /// Retrieves the last printed mouse button.
     pub(crate) fn last_btn(&self) -> Option<MouseButton> {
-        self.input_cache.read().unwrap().last_mouse_button.clone()
+        self.input_cache.read().unwrap().last_mouse_button
     }
 
     /// Retrieves the foreground color index.
@@ -174,7 +174,7 @@ fn init_custom_window() -> Window {
             .map(|var| var.is_empty())
             .unwrap_or(false)
     {
-        return init_stdout_window();
+        init_stdout_window()
     } else {
         // Create screen pointer which we will be using for this backend.
         let screen = pancurses::newterm(Some(env!("TERM")), c_file, c_file);
@@ -226,6 +226,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
         self.flush_batch()
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn batch(&mut self, action: Action) -> error::Result<()> {
         match action {
             Action::MoveCursorTo(x, y) => {
@@ -268,12 +269,12 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             }
             Action::EnableMouseCapture => {
                 self.buffer
-                    .write(constants::ENABLE_MOUSE_CAPTURE.as_bytes())?;
+                    .write_all(constants::ENABLE_MOUSE_CAPTURE.as_bytes())?;
                 self.buffer.flush()?;
             }
             Action::DisableMouseCapture => {
                 self.buffer
-                    .write(constants::DISABLE_MOUSE_CAPTURE.as_bytes())?;
+                    .write_all(constants::DISABLE_MOUSE_CAPTURE.as_bytes())?;
                 self.buffer.flush()?;
             }
             Action::ResetColor => {
@@ -331,7 +332,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                 });
 
                 if no_match1.is_none() && no_match2.is_none() {
-                    return Err(error::ErrorKind::AttributeNotSupported(String::from(attr)))?;
+                    return Err(error::ErrorKind::AttributeNotSupported(String::from(attr)));
                 }
             }
             Action::EnterAlternateScreen
@@ -408,6 +409,7 @@ fn initialize_keymap() -> HashMap<i32, Event> {
     map
 }
 
+#[allow(clippy::eq_op)]
 fn fill_key_codes<F>(target: &mut HashMap<i32, Event>, f: F)
 where
     F: Fn(i32) -> Option<String>,
@@ -455,11 +457,11 @@ where
             }),
             "6" => Event::Key(KeyEvent {
                 code: key,
-                modifiers: KeyModifiers::CONTROL | KeyModifiers::CONTROL,
+                modifiers: (KeyModifiers::CONTROL | KeyModifiers::CONTROL),
             }),
             "7" => Event::Key(KeyEvent {
                 code: key,
-                modifiers: KeyModifiers::CONTROL | KeyModifiers::ALT,
+                modifiers: (KeyModifiers::CONTROL | KeyModifiers::ALT),
             }),
             _ => continue,
         };

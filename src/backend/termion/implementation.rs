@@ -193,6 +193,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
         self.flush_batch()
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn batch(&mut self, action: Action) -> error::Result<()> {
         match action {
             Action::MoveCursorTo(column, row) => {

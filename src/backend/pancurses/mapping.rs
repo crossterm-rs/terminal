@@ -5,13 +5,13 @@ use std::io::Write;
 impl<W: Write> super::BackendImpl<W> {
     pub fn parse_next(&self, input: pancurses::Input) -> Event {
         // Try to map the pancurses input event to an `KeyEvent` with possible modifiers.
-        let key_event = self.try_parse_key(&input).map_or(
-            self.try_map_shift_key(&input).map_or(
-                self.try_map_ctrl_key(&input)
-                    .map_or(self.try_map_ctrl_alt_key(&input), |e| Some(e)),
-                |e| Some(e),
+        let key_event = self.try_parse_key(input).map_or(
+            self.try_map_shift_key(input).map_or(
+                self.try_map_ctrl_key(input)
+                    .map_or(self.try_map_ctrl_alt_key(input), Some),
+                Some,
             ),
-            |e| Some(e),
+            Some,
         );
 
         match key_event {
@@ -21,18 +21,18 @@ impl<W: Write> super::BackendImpl<W> {
                 // Although other backends have to support it as well.
                 // The point of this library is to support the most of the important keys.
 
-                self.try_map_non_key_event(&input)
+                self.try_map_non_key_event(input)
                     .map_or(Event::Unknown, |e| e)
             }
         }
     }
 
     /// Matches on keys without modifiers, returns `None` if the key has modifiers or is not supported.
-    pub fn try_parse_key(&self, input: &pancurses::Input) -> Option<KeyEvent> {
+    pub fn try_parse_key(&self, input: pancurses::Input) -> Option<KeyEvent> {
         let empty = KeyModifiers::empty();
 
         let key_code = match input {
-            &Input::Character(c) => match c {
+            Input::Character(c) => match c {
                 '\r' | '\n' => Some(KeyCode::Enter.into()),
                 '\t' => Some(KeyCode::Tab.into()),
                 '\x7F' => Some(KeyCode::Backspace.into()),
@@ -52,115 +52,115 @@ impl<W: Write> super::BackendImpl<W> {
                 '\u{1b}' => Some(KeyCode::Esc.into()),
                 c => Some(KeyCode::Char(c).into()),
             },
-            &Input::KeyDown => Some(KeyEvent {
+            Input::KeyDown => Some(KeyEvent {
                 code: KeyCode::Down,
                 modifiers: empty,
             }),
-            &Input::KeyUp => Some(KeyEvent {
+            Input::KeyUp => Some(KeyEvent {
                 code: KeyCode::Up,
                 modifiers: empty,
             }),
-            &Input::KeyLeft => Some(KeyEvent {
+            Input::KeyLeft => Some(KeyEvent {
                 code: KeyCode::Left,
                 modifiers: empty,
             }),
-            &Input::KeyRight => Some(KeyEvent {
+            Input::KeyRight => Some(KeyEvent {
                 code: KeyCode::Right,
                 modifiers: empty,
             }),
-            &Input::KeyHome => Some(KeyEvent {
+            Input::KeyHome => Some(KeyEvent {
                 code: KeyCode::Home,
                 modifiers: empty,
             }),
-            &Input::KeyBackspace => Some(KeyEvent {
+            Input::KeyBackspace => Some(KeyEvent {
                 code: KeyCode::Backspace,
                 modifiers: empty,
             }),
-            &Input::KeyF0 => Some(KeyEvent {
+            Input::KeyF0 => Some(KeyEvent {
                 code: KeyCode::F(0),
                 modifiers: empty,
             }),
-            &Input::KeyF1 => Some(KeyEvent {
+            Input::KeyF1 => Some(KeyEvent {
                 code: KeyCode::F(1),
                 modifiers: empty,
             }),
-            &Input::KeyF2 => Some(KeyEvent {
+            Input::KeyF2 => Some(KeyEvent {
                 code: KeyCode::F(2),
                 modifiers: empty,
             }),
-            &Input::KeyF3 => Some(KeyEvent {
+            Input::KeyF3 => Some(KeyEvent {
                 code: KeyCode::F(3),
                 modifiers: empty,
             }),
-            &Input::KeyF4 => Some(KeyEvent {
+            Input::KeyF4 => Some(KeyEvent {
                 code: KeyCode::F(4),
                 modifiers: empty,
             }),
-            &Input::KeyF5 => Some(KeyEvent {
+            Input::KeyF5 => Some(KeyEvent {
                 code: KeyCode::F(5),
                 modifiers: empty,
             }),
-            &Input::KeyF6 => Some(KeyEvent {
+            Input::KeyF6 => Some(KeyEvent {
                 code: KeyCode::F(6),
                 modifiers: empty,
             }),
-            &Input::KeyF7 => Some(KeyEvent {
+            Input::KeyF7 => Some(KeyEvent {
                 code: KeyCode::F(7),
                 modifiers: empty,
             }),
-            &Input::KeyF8 => Some(KeyEvent {
+            Input::KeyF8 => Some(KeyEvent {
                 code: KeyCode::F(8),
                 modifiers: empty,
             }),
-            &Input::KeyF9 => Some(KeyEvent {
+            Input::KeyF9 => Some(KeyEvent {
                 code: KeyCode::F(9),
                 modifiers: empty,
             }),
-            &Input::KeyF10 => Some(KeyEvent {
+            Input::KeyF10 => Some(KeyEvent {
                 code: KeyCode::F(10),
                 modifiers: empty,
             }),
-            &Input::KeyF11 => Some(KeyEvent {
+            Input::KeyF11 => Some(KeyEvent {
                 code: KeyCode::F(11),
                 modifiers: empty,
             }),
-            &Input::KeyF12 => Some(KeyEvent {
+            Input::KeyF12 => Some(KeyEvent {
                 code: KeyCode::F(12),
                 modifiers: empty,
             }),
-            &Input::KeyF13 => Some(KeyEvent {
+            Input::KeyF13 => Some(KeyEvent {
                 code: KeyCode::F(13),
                 modifiers: empty,
             }),
-            &Input::KeyF14 => Some(KeyEvent {
+            Input::KeyF14 => Some(KeyEvent {
                 code: KeyCode::F(14),
                 modifiers: empty,
             }),
-            &Input::KeyF15 => Some(KeyEvent {
+            Input::KeyF15 => Some(KeyEvent {
                 code: KeyCode::F(15),
                 modifiers: empty,
             }),
-            &Input::KeyDL => Some(KeyEvent {
+            Input::KeyDL => Some(KeyEvent {
                 code: KeyCode::Delete,
                 modifiers: empty,
             }),
-            &Input::KeyIC => Some(KeyEvent {
+            Input::KeyIC => Some(KeyEvent {
                 code: KeyCode::Insert,
                 modifiers: empty,
             }),
-            &Input::KeyNPage => Some(KeyEvent {
+            Input::KeyNPage => Some(KeyEvent {
                 code: KeyCode::PageDown,
                 modifiers: empty,
             }),
-            &Input::KeyPPage => Some(KeyEvent {
+            Input::KeyPPage => Some(KeyEvent {
                 code: KeyCode::PageUp,
                 modifiers: empty,
             }),
-            &Input::KeyEnter => Some(KeyEvent {
+            Input::KeyEnter => Some(KeyEvent {
                 code: KeyCode::Enter,
                 modifiers: empty,
             }),
-            &Input::KeyEnd => Some(KeyEvent {
+            Input::KeyEnd => Some(KeyEvent {
                 code: KeyCode::End,
                 modifiers: empty,
             }),
@@ -171,21 +171,21 @@ impl<W: Write> super::BackendImpl<W> {
     }
 
     /// Matches on shift keys, returns `None` if the key does not have an SHIFT modifier or is not supported.
-    pub fn try_map_shift_key(&self, input: &pancurses::Input) -> Option<KeyEvent> {
+    pub fn try_map_shift_key(&self, input: pancurses::Input) -> Option<KeyEvent> {
         let key_code = match input {
-            &Input::KeySF => Some(KeyCode::Down),
-            &Input::KeySR => Some(KeyCode::Up),
-            &Input::KeySTab => Some(KeyCode::Tab),
-            &Input::KeySDC => Some(KeyCode::Delete),
-            &Input::KeySEnd => Some(KeyCode::End),
-            &Input::KeySHome => Some(KeyCode::Home),
-            &Input::KeySIC => Some(KeyCode::Insert),
-            &Input::KeySLeft => Some(KeyCode::Left),
-            &Input::KeySNext => Some(KeyCode::PageDown),
-            &Input::KeySPrevious => Some(KeyCode::PageDown),
-            &Input::KeySPrint => Some(KeyCode::End),
-            &Input::KeySRight => Some(KeyCode::Right),
-            &Input::KeyBTab => Some(KeyCode::BackTab),
+            Input::KeySF => Some(KeyCode::Down),
+            Input::KeySR => Some(KeyCode::Up),
+            Input::KeySTab => Some(KeyCode::Tab),
+            Input::KeySDC => Some(KeyCode::Delete),
+            Input::KeySEnd => Some(KeyCode::End),
+            Input::KeySHome => Some(KeyCode::Home),
+            Input::KeySIC => Some(KeyCode::Insert),
+            Input::KeySLeft => Some(KeyCode::Left),
+            Input::KeySNext => Some(KeyCode::PageDown),
+            Input::KeySPrevious => Some(KeyCode::PageDown),
+            Input::KeySPrint => Some(KeyCode::End),
+            Input::KeySRight => Some(KeyCode::Right),
+            Input::KeyBTab => Some(KeyCode::BackTab),
             _ => None,
         };
 
@@ -193,9 +193,9 @@ impl<W: Write> super::BackendImpl<W> {
     }
 
     /// Matches on CTRL keys, returns `None` if the key does not have an CTRL modifier or is not supported.
-    pub fn try_map_ctrl_key(&self, input: &pancurses::Input) -> Option<KeyEvent> {
+    pub fn try_map_ctrl_key(&self, input: pancurses::Input) -> Option<KeyEvent> {
         let key_code = match input {
-            &Input::KeyCTab => Some(KeyCode::Tab),
+            Input::KeyCTab => Some(KeyCode::Tab),
             _ => None,
         };
 
@@ -203,9 +203,9 @@ impl<W: Write> super::BackendImpl<W> {
     }
 
     /// Matches on CTRL + ALT keys, returns `None` if the key does not have an SHIFT + ALT modifier or is not supported.
-    pub fn try_map_ctrl_alt_key(&self, input: &pancurses::Input) -> Option<KeyEvent> {
+    pub fn try_map_ctrl_alt_key(&self, input: pancurses::Input) -> Option<KeyEvent> {
         let key_code = match input {
-            &Input::KeyCATab => Some(KeyCode::Tab),
+            Input::KeyCATab => Some(KeyCode::Tab),
             _ => None,
         };
 
@@ -213,18 +213,18 @@ impl<W: Write> super::BackendImpl<W> {
     }
 
     /// Matches on non key events, returns `None` if the key is not a non-key event or is not supported.
-    pub fn try_map_non_key_event(&self, input: &pancurses::Input) -> Option<Event> {
+    pub fn try_map_non_key_event(&self, input: pancurses::Input) -> Option<Event> {
         // No key event, handle non key events e.g resize
         match input {
-            &Input::KeyResize => {
+            Input::KeyResize => {
                 // Let pancurses adjust their structures when the
                 // window is resized.
                 pancurses::resize_term(0, 0);
 
                 Some(Event::Resize)
             }
-            &Input::KeyMouse => Some(self.map_mouse_event()),
-            &Input::Unknown(code) => {
+            Input::KeyMouse => Some(self.map_mouse_event()),
+            Input::Unknown(code) => {
                 Some(
                     self.key_codes
                         // pancurses does some weird keycode mapping
