@@ -177,7 +177,7 @@ fn init_custom_window() -> Window {
         init_stdout_window()
     } else {
         // Create screen pointer which we will be using for this backend.
-        let screen = pancurses::newterm(Some(env!("TERM")), c_file, c_file);
+        let screen = pancurses::newterm(None, c_file, c_file);
 
         // Set the created screen as active.
         pancurses::set_term(screen);

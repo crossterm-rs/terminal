@@ -68,3 +68,12 @@ fn rgb_blue_values<W: Write>(w: &mut TerminalLock<W>) -> error::Result<()> {
         Color::Rgb(0, 0, (row * 16 + col) as u8)
     })
 }
+
+fn main() {
+    let terminal = stdout();
+    let mut lock = terminal.lock_mut().unwrap();
+
+    rgb(&mut lock);
+
+    thread::sleep(Duration::from_millis(2000))
+}
