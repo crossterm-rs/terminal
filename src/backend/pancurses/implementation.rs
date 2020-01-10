@@ -121,15 +121,12 @@ impl<W: Write> BackendImpl<W> {
     /// Retrieves the color pair index, if the given color pair doesn't exist yet,
     /// it will be created and the index will be returned.
     fn get_or_insert(&mut self, key: i16, fg_color: i16, bg_color: i16) -> i32 {
-        if self.color_pairs.contains_key(&key) {
-            self.color_pairs[&key]
-        } else {
-            let index = self.new_color_pair_index();
+        let index = self.new_color_pair_index();
 
-            self.color_pairs.insert(key, index);
+        *self.color_pairs.entry(key).or_insert_with(|| {
             pancurses::init_pair(index as i16, fg_color, bg_color);
             index
-        }
+        })
     }
 
     /// Returns a new color pair index.
