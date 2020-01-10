@@ -33,6 +33,10 @@ Why would I need this library? Three main reasons:
     Like cursor 0 or 1 based, cleaning resources, event handling, performing actions.  
 
 
+This libary is still quite young. You can expect complications. 
+If you experience problems, feel free to make an issue. 
+I'd fix it as soon as possible.
+
 ## Table of Contents
 
 * [Features](#features)
@@ -70,7 +74,7 @@ Use **one** of the below feature flags to choose an backend.
 _like_
 ```toml
 [dependencies.terminal]
-version = "0.1"
+version = "0.2"
 features = ["crossterm-backend"] 
 ```
 
@@ -88,7 +92,7 @@ Click to show Cargo.toml.
 
 ```toml
 [dependencies]
-terminal = "0.1"
+terminal = "0.2"
 features = ["your_backend_choice"] 
 ```
 
