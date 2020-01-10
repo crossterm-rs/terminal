@@ -22,9 +22,10 @@ features = ["crossterm-backend"]
 # Features
 #
 [features]
-default = ["crossterm-backend"]
+default = ["pancurses-backend"]
 termion-backend = ["termion", "signal-hook", "libc", "crossbeam-channel"]
 crossterm-backend = ["crossterm"]
+pancurses-backend = ["pancurses", "libc", "anes"]
 
 #
 # Shared dependencies
@@ -43,6 +44,11 @@ version = "1.5.3"
 optional = true
 version = "0.14"
 
+[dependencies.pancurses]
+optional = true
+git = "https://github.com/TimonPost/pancurses"
+features = ["wide"]
+
 #
 # UNIX dependencies
 #
@@ -50,3 +56,4 @@ version = "0.14"
 signal-hook = { version = "0.1.12", optional = true }
 libc = { version = "0.2.66", optional = true }
 crossbeam-channel = { version = "0.4.0", optional = true }
+anes = { version = "0.1.6", optional = true, features=["parser"] }

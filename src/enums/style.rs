@@ -49,6 +49,44 @@ pub enum Color {
     AnsiValue(u8),
 }
 
+impl From<u8> for Color {
+    fn from(n: u8) -> Self {
+        match n {
+            0 => Color::Black,
+            1 => Color::Red,
+            2 => Color::Green,
+            3 => Color::Yellow,
+            4 => Color::Blue,
+            5 => Color::Magenta,
+            6 => Color::Cyan,
+            7 => Color::White,
+
+            8 => Color::Black,
+            9 => Color::DarkRed,
+            10 => Color::DarkGreen,
+            11 => Color::DarkYellow,
+            12 => Color::DarkBlue,
+            13 => Color::DarkMagenta,
+            14 => Color::DarkCyan,
+            15 => Color::Grey,
+
+            // parsing: https://stackoverflow.com/questions/27159322/rgb-values-of-the-colors-in-the-ansi-extended-colors-index-17-255
+            _ if n > 15 && n < 232 => {
+                let rgb_r = ((n - 16) / 36) * 51;
+                let rgb_g = (((n - 16) % 36) / 6) * 51;
+                let rgb_b = ((n - 16) % 6) * 51;
+
+                Color::Rgb(rgb_r, rgb_g, rgb_b)
+            }
+            _ if n >= 232 => {
+                let value = (n - 232) * 10 + 8;
+                Color::Rgb(value, value, value)
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum Attribute {
