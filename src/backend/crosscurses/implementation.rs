@@ -1,13 +1,13 @@
-use crate::backend::pancurses::constants;
+use crate::backend::crosscurses::constants;
 use crate::{
     backend::{
-        pancurses::{current_style::CurrentStyle, mapping::find_closest},
+        crosscurses::{current_style::CurrentStyle, mapping::find_closest},
         Backend,
     },
     error, Action, Attribute, Clear, Color, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton,
     Retrieved, Value,
 };
-use pancurses::{ToChtype, Window, COLORS};
+use crosscurses::{ToChtype, Window, COLORS};
 use std::{
     collections::HashMap, ffi::CStr, fs::File, io, io::Write, os::unix::io::IntoRawFd, result,
     sync::RwLock,
@@ -23,7 +23,7 @@ macro_rules! check {
             return Err($crate::error::ErrorKind::IoError(std::io::Error::new(std::io::ErrorKind::Other, "Some error occurred while executing the action")))
         }
         3 => {
-            return Err($crate::error::ErrorKind::ActionNotSupported("The action is not supported by pancurses. Either work around it or use an other backend.".to_string()))
+            return Err($crate::error::ErrorKind::ActionNotSupported("The action is not supported by crosscurses. Either work around it or use an other backend.".to_string()))
         }
         _ => {}
     });
@@ -40,9 +40,9 @@ struct InputCache {
 
 pub struct BackendImpl<W: Write> {
     buffer: W,
-    // We can batch commands in the pancurses window.
+    // We can batch commands in the crosscurses window.
     // The moment we call `refresh` these are executed.
-    window: pancurses::Window,
+    window: crosscurses::Window,
 
     // The cache needed to parse input.
     input_cache: RwLock<InputCache>,
@@ -124,7 +124,7 @@ impl<W: Write> BackendImpl<W> {
         let index = self.new_color_pair_index();
 
         *self.color_pairs.entry(key).or_insert_with(|| {
-            pancurses::init_pair(index as i16, fg_color, bg_color);
+            crosscurses::init_pair(index as i16, fg_color, bg_color);
             index
         })
     }
@@ -147,14 +147,14 @@ impl<W: Write> BackendImpl<W> {
 }
 
 fn init_stdout_window() -> Window {
-    // Windows currently will only work on stdout because of this default pancurses initialisation.
+    // Windows currently will only work on stdout because of this default crosscurses initialisation.
     // TODO: support using `newterm` like `init_unix_window` so that we are not depended on stdout.
-    pancurses::initscr()
+    crosscurses::initscr()
 }
 
 #[cfg(unix)]
 fn init_custom_window() -> Window {
-    // By default pancurses use stdout.
+    // By default crosscurses use stdout.
     // We can change this by calling `new_term` with an FILE pointer to the source.
     // Which is /dev/tty in our case.
     let file = File::create("/dev/tty").unwrap();
@@ -174,13 +174,13 @@ fn init_custom_window() -> Window {
         init_stdout_window()
     } else {
         // Create screen pointer which we will be using for this backend.
-        let screen = pancurses::newterm(None, c_file, c_file);
+        let screen = crosscurses::newterm(None, c_file, c_file);
 
         // Set the created screen as active.
-        pancurses::set_term(screen);
+        crosscurses::set_term(screen);
 
         // Get `Window` of the created screen.
-        pancurses::stdscr()
+        crosscurses::stdscr()
     }
 }
 
@@ -199,14 +199,14 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
 
         // Some default settings
         window.keypad(true);
-        pancurses::start_color();
-        pancurses::use_default_colors();
-        pancurses::mousemask(constants::MOUSE_EVENT_MASK, ::std::ptr::null_mut());
+        crosscurses::start_color();
+        crosscurses::use_default_colors();
+        crosscurses::mousemask(constants::MOUSE_EVENT_MASK, ::std::ptr::null_mut());
 
         // Initialize the default fore and background.
         let mut map = HashMap::<i16, i32>::new();
         map.insert(-1, 0);
-        pancurses::init_pair(0, -1, -1);
+        crosscurses::init_pair(0, -1, -1);
 
         BackendImpl {
             window,
@@ -231,38 +231,38 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                 check!(self.window.mv(y as i32, x as i32));
             }
             Action::HideCursor => {
-                check!(pancurses::curs_set(0));
+                check!(crosscurses::curs_set(0));
             }
             Action::ShowCursor => {
-                check!(pancurses::curs_set(1));
+                check!(crosscurses::curs_set(1));
             }
             Action::EnableBlinking => {
-                check!(pancurses::set_blink(true));
+                check!(crosscurses::set_blink(true));
             }
             Action::DisableBlinking => {
-                check!(pancurses::set_blink(false));
+                check!(crosscurses::set_blink(false));
             }
             Action::ClearTerminal(clear_type) => {
                 check!(match clear_type {
                     Clear::All => self.window.clear(),
                     Clear::FromCursorDown => self.window.clrtobot(),
                     Clear::UntilNewLine => self.window.clrtoeol(),
-                    Clear::FromCursorUp => 3, // TODO, not supported by pancurses
-                    Clear::CurrentLine => 3,  // TODO, not supported by pancurses
+                    Clear::FromCursorUp => 3, // TODO, not supported by crosscurses
+                    Clear::CurrentLine => 3,  // TODO, not supported by crosscurses
                 });
             }
             Action::SetTerminalSize(cols, rows) => {
-                pancurses::resize_term(rows as i32, cols as i32);
+                crosscurses::resize_term(rows as i32, cols as i32);
             }
             Action::EnableRawMode => {
-                check!(pancurses::noecho());
-                check!(pancurses::raw());
-                check!(pancurses::nonl());
+                check!(crosscurses::noecho());
+                check!(crosscurses::raw());
+                check!(crosscurses::nonl());
             }
             Action::DisableRawMode => {
-                check!(pancurses::echo());
-                check!(pancurses::noraw());
-                check!(pancurses::nl());
+                check!(crosscurses::echo());
+                check!(crosscurses::noraw());
+                check!(crosscurses::nl());
             }
             Action::EnableMouseCapture => {
                 self.buffer
@@ -275,7 +275,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                 self.buffer.flush()?;
             }
             Action::ResetColor => {
-                let style = pancurses::COLOR_PAIR(0 as pancurses::chtype);
+                let style = crosscurses::COLOR_PAIR(0 as crosscurses::chtype);
                 check!(self.window.attron(style));
                 check!(self.window.attroff(self.current_style.attributes));
                 check!(self.window.refresh());
@@ -283,29 +283,29 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
             Action::SetForegroundColor(color) => {
                 self.current_style.foreground = color;
                 let index = self.get_fg_index(color);
-                let style = pancurses::COLOR_PAIR(index as pancurses::chtype);
+                let style = crosscurses::COLOR_PAIR(index as crosscurses::chtype);
                 check!(self.window.attron(style));
                 check!(self.window.refresh());
             }
             Action::SetBackgroundColor(color) => {
                 self.current_style.background = color;
                 let index = self.get_bg_index(color);
-                let style = pancurses::COLOR_PAIR(index as pancurses::chtype);
+                let style = crosscurses::COLOR_PAIR(index as crosscurses::chtype);
                 check!(self.window.attron(style));
                 check!(self.window.refresh());
             }
             Action::SetAttribute(attr) => {
                 let no_match1 = match attr {
-                    Attribute::Reset => Some(pancurses::Attribute::Normal),
-                    Attribute::Bold => Some(pancurses::Attribute::Bold),
-                    Attribute::Italic => Some(pancurses::Attribute::Italic),
-                    Attribute::Underlined => Some(pancurses::Attribute::Underline),
+                    Attribute::Reset => Some(crosscurses::Attribute::Normal),
+                    Attribute::Bold => Some(crosscurses::Attribute::Bold),
+                    Attribute::Italic => Some(crosscurses::Attribute::Italic),
+                    Attribute::Underlined => Some(crosscurses::Attribute::Underline),
                     Attribute::SlowBlink | Attribute::RapidBlink => {
-                        Some(pancurses::Attribute::Blink)
+                        Some(crosscurses::Attribute::Blink)
                     }
-                    Attribute::Crossed => Some(pancurses::Attribute::Strikeout),
-                    Attribute::Reversed => Some(pancurses::Attribute::Reverse),
-                    Attribute::Conceal => Some(pancurses::Attribute::Invisible),
+                    Attribute::Crossed => Some(crosscurses::Attribute::Strikeout),
+                    Attribute::Reversed => Some(crosscurses::Attribute::Reverse),
+                    Attribute::Conceal => Some(crosscurses::Attribute::Invisible),
                     _ => None, // OFF attributes and Fraktur, NormalIntensity, Framed
                 }
                 .map(|attribute| {
@@ -314,13 +314,13 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                 });
 
                 let no_match2 = match attr {
-                    Attribute::BoldOff => Some(pancurses::Attribute::Bold),
-                    Attribute::ItalicOff => Some(pancurses::Attribute::Italic),
-                    Attribute::UnderlinedOff => Some(pancurses::Attribute::Underline),
-                    Attribute::BlinkOff => Some(pancurses::Attribute::Blink),
-                    Attribute::CrossedOff => Some(pancurses::Attribute::Strikeout),
-                    Attribute::ReversedOff => Some(pancurses::Attribute::Reverse),
-                    Attribute::ConcealOff => Some(pancurses::Attribute::Invisible),
+                    Attribute::BoldOff => Some(crosscurses::Attribute::Bold),
+                    Attribute::ItalicOff => Some(crosscurses::Attribute::Italic),
+                    Attribute::UnderlinedOff => Some(crosscurses::Attribute::Underline),
+                    Attribute::BlinkOff => Some(crosscurses::Attribute::Blink),
+                    Attribute::CrossedOff => Some(crosscurses::Attribute::Strikeout),
+                    Attribute::ReversedOff => Some(crosscurses::Attribute::Reverse),
+                    Attribute::ConcealOff => Some(crosscurses::Attribute::Invisible),
                     _ => None, // OFF attributes and Fraktur, NormalIntensity, Framed
                 }
                 .map(|attribute| {
@@ -379,7 +379,7 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
 impl<W: Write> Drop for BackendImpl<W> {
     fn drop(&mut self) {
         let _ = self.act(Action::DisableMouseCapture);
-        pancurses::endwin();
+        crosscurses::endwin();
     }
 }
 
@@ -387,7 +387,7 @@ impl<W: Write> Write for BackendImpl<W> {
     fn write(&mut self, buf: &[u8]) -> result::Result<usize, io::Error> {
         let string = std::str::from_utf8(buf).unwrap();
         let len = string.len();
-        // We need to write strings to pancurses window instead of directly to the buffer.
+        // We need to write strings to crosscurses window instead of directly to the buffer.
         self.print(string).unwrap();
         Ok(len)
     }
@@ -401,7 +401,7 @@ impl<W: Write> Write for BackendImpl<W> {
 fn initialize_keymap() -> HashMap<i32, Event> {
     let mut map = HashMap::default();
 
-    fill_key_codes(&mut map, pancurses::keyname);
+    fill_key_codes(&mut map, crosscurses::keyname);
 
     map
 }

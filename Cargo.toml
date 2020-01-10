@@ -1,6 +1,6 @@
 [package]
 name = "terminal"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["T. Post"]
 description = "Unified API for different TUI libraries."
 edition = "2018"
@@ -22,10 +22,10 @@ features = ["crossterm-backend"]
 # Features
 #
 [features]
-default = ["pancurses-backend"]
+default = ["crossterm-backend"]
 termion-backend = ["termion", "signal-hook", "libc", "crossbeam-channel"]
 crossterm-backend = ["crossterm"]
-pancurses-backend = ["pancurses", "libc", "anes"]
+crosscurses-backend = ["crosscurses", "libc"]
 
 #
 # Shared dependencies
@@ -44,9 +44,9 @@ version = "1.5.3"
 optional = true
 version = "0.14"
 
-[dependencies.pancurses]
+[dependencies.crosscurses]
 optional = true
-git = "https://github.com/TimonPost/pancurses"
+version = "0.1.0"
 features = ["wide"]
 
 #
@@ -56,4 +56,3 @@ features = ["wide"]
 signal-hook = { version = "0.1.12", optional = true }
 libc = { version = "0.2.66", optional = true }
 crossbeam-channel = { version = "0.4.0", optional = true }
-anes = { version = "0.1.6", optional = true, features=["parser"] }

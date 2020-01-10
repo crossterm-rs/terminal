@@ -1,10 +1,10 @@
 use crate::{Color, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent};
-use pancurses::{mmask_t, Input};
+use crosscurses::{mmask_t, Input};
 use std::io::Write;
 
 impl<W: Write> super::BackendImpl<W> {
-    pub fn parse_next(&self, input: pancurses::Input) -> Event {
-        // Try to map the pancurses input event to an `KeyEvent` with possible modifiers.
+    pub fn parse_next(&self, input: crosscurses::Input) -> Event {
+        // Try to map the crosscurses input event to an `KeyEvent` with possible modifiers.
         let key_event = self.try_parse_key(input).map_or(
             self.try_map_shift_key(input).map_or(
                 self.try_map_ctrl_key(input)
@@ -28,7 +28,7 @@ impl<W: Write> super::BackendImpl<W> {
     }
 
     /// Matches on keys without modifiers, returns `None` if the key has modifiers or is not supported.
-    pub fn try_parse_key(&self, input: pancurses::Input) -> Option<KeyEvent> {
+    pub fn try_parse_key(&self, input: crosscurses::Input) -> Option<KeyEvent> {
         let empty = KeyModifiers::empty();
 
         let key_code = match input {
@@ -171,7 +171,7 @@ impl<W: Write> super::BackendImpl<W> {
     }
 
     /// Matches on shift keys, returns `None` if the key does not have an SHIFT modifier or is not supported.
-    pub fn try_map_shift_key(&self, input: pancurses::Input) -> Option<KeyEvent> {
+    pub fn try_map_shift_key(&self, input: crosscurses::Input) -> Option<KeyEvent> {
         let key_code = match input {
             Input::KeySF => Some(KeyCode::Down),
             Input::KeySR => Some(KeyCode::Up),
@@ -193,7 +193,7 @@ impl<W: Write> super::BackendImpl<W> {
     }
 
     /// Matches on CTRL keys, returns `None` if the key does not have an CTRL modifier or is not supported.
-    pub fn try_map_ctrl_key(&self, input: pancurses::Input) -> Option<KeyEvent> {
+    pub fn try_map_ctrl_key(&self, input: crosscurses::Input) -> Option<KeyEvent> {
         let key_code = match input {
             Input::KeyCTab => Some(KeyCode::Tab),
             _ => None,
@@ -203,7 +203,7 @@ impl<W: Write> super::BackendImpl<W> {
     }
 
     /// Matches on CTRL + ALT keys, returns `None` if the key does not have an SHIFT + ALT modifier or is not supported.
-    pub fn try_map_ctrl_alt_key(&self, input: pancurses::Input) -> Option<KeyEvent> {
+    pub fn try_map_ctrl_alt_key(&self, input: crosscurses::Input) -> Option<KeyEvent> {
         let key_code = match input {
             Input::KeyCATab => Some(KeyCode::Tab),
             _ => None,
@@ -213,13 +213,13 @@ impl<W: Write> super::BackendImpl<W> {
     }
 
     /// Matches on non key events, returns `None` if the key is not a non-key event or is not supported.
-    pub fn try_map_non_key_event(&self, input: pancurses::Input) -> Option<Event> {
+    pub fn try_map_non_key_event(&self, input: crosscurses::Input) -> Option<Event> {
         // No key event, handle non key events e.g resize
         match input {
             Input::KeyResize => {
-                // Let pancurses adjust their structures when the
+                // Let crosscurses adjust their structures when the
                 // window is resized.
-                pancurses::resize_term(0, 0);
+                crosscurses::resize_term(0, 0);
 
                 Some(Event::Resize)
             }
@@ -227,7 +227,7 @@ impl<W: Write> super::BackendImpl<W> {
             Input::Unknown(code) => {
                 Some(
                     self.key_codes
-                        // pancurses does some weird keycode mapping
+                        // crosscurses does some weird keycode mapping
                         .get(&(code + 256 + 48))
                         .cloned()
                         .unwrap_or_else(|| Event::Unknown),
@@ -238,14 +238,14 @@ impl<W: Write> super::BackendImpl<W> {
     }
 
     fn map_mouse_event(&self) -> Event {
-        let mut mevent = match pancurses::getmouse() {
+        let mut mevent = match crosscurses::getmouse() {
             Err(_) => return Event::Unknown,
             Ok(event) => event,
         };
 
-        let shift = (mevent.bstate & pancurses::BUTTON_SHIFT as mmask_t) != 0;
-        let alt = (mevent.bstate & pancurses::BUTTON_ALT as mmask_t) != 0;
-        let ctrl = (mevent.bstate & pancurses::BUTTON_CTRL as mmask_t) != 0;
+        let shift = (mevent.bstate & crosscurses::BUTTON_SHIFT as mmask_t) != 0;
+        let alt = (mevent.bstate & crosscurses::BUTTON_ALT as mmask_t) != 0;
+        let ctrl = (mevent.bstate & crosscurses::BUTTON_CTRL as mmask_t) != 0;
 
         let mut modifiers = KeyModifiers::empty();
 
@@ -259,12 +259,13 @@ impl<W: Write> super::BackendImpl<W> {
             modifiers |= KeyModifiers::ALT;
         }
 
-        mevent.bstate &=
-            !(pancurses::BUTTON_SHIFT | pancurses::BUTTON_ALT | pancurses::BUTTON_CTRL) as mmask_t;
+        mevent.bstate &= !(crosscurses::BUTTON_SHIFT
+            | crosscurses::BUTTON_ALT
+            | crosscurses::BUTTON_CTRL) as mmask_t;
 
         let (x, y) = (mevent.x as u16, mevent.y as u16);
 
-        if mevent.bstate == pancurses::REPORT_MOUSE_POSITION as mmask_t {
+        if mevent.bstate == crosscurses::REPORT_MOUSE_POSITION as mmask_t {
             // The event is either a mouse drag event,
             // or a weird double-release event. :S
             self.last_btn()
@@ -330,40 +331,40 @@ impl<W: Write> super::BackendImpl<W> {
     {
         let button = self.map_mouse_button(bare_event);
         match bare_event {
-            pancurses::BUTTON4_PRESSED => f(MouseEvent::ScrollUp(x, y, modifiers)),
-            pancurses::BUTTON5_PRESSED => f(MouseEvent::ScrollDown(x, y, modifiers)),
-            pancurses::BUTTON1_RELEASED
-            | pancurses::BUTTON2_RELEASED
-            | pancurses::BUTTON3_RELEASED
-            | pancurses::BUTTON4_RELEASED
-            | pancurses::BUTTON5_RELEASED => f(MouseEvent::Up(button, x, y, modifiers)),
-            pancurses::BUTTON1_PRESSED
-            | pancurses::BUTTON2_PRESSED
-            | pancurses::BUTTON3_PRESSED => f(MouseEvent::Down(button, x, y, modifiers)),
-            pancurses::BUTTON1_CLICKED
-            | pancurses::BUTTON2_CLICKED
-            | pancurses::BUTTON3_CLICKED
-            | pancurses::BUTTON4_CLICKED
-            | pancurses::BUTTON5_CLICKED => {
+            crosscurses::BUTTON4_PRESSED => f(MouseEvent::ScrollUp(x, y, modifiers)),
+            crosscurses::BUTTON5_PRESSED => f(MouseEvent::ScrollDown(x, y, modifiers)),
+            crosscurses::BUTTON1_RELEASED
+            | crosscurses::BUTTON2_RELEASED
+            | crosscurses::BUTTON3_RELEASED
+            | crosscurses::BUTTON4_RELEASED
+            | crosscurses::BUTTON5_RELEASED => f(MouseEvent::Up(button, x, y, modifiers)),
+            crosscurses::BUTTON1_PRESSED
+            | crosscurses::BUTTON2_PRESSED
+            | crosscurses::BUTTON3_PRESSED => f(MouseEvent::Down(button, x, y, modifiers)),
+            crosscurses::BUTTON1_CLICKED
+            | crosscurses::BUTTON2_CLICKED
+            | crosscurses::BUTTON3_CLICKED
+            | crosscurses::BUTTON4_CLICKED
+            | crosscurses::BUTTON5_CLICKED => {
                 f(MouseEvent::Down(button, x, y, modifiers));
                 f(MouseEvent::Up(button, x, y, modifiers));
             }
             // Well, we disabled click detection
-            pancurses::BUTTON1_DOUBLE_CLICKED
-            | pancurses::BUTTON2_DOUBLE_CLICKED
-            | pancurses::BUTTON3_DOUBLE_CLICKED
-            | pancurses::BUTTON4_DOUBLE_CLICKED
-            | pancurses::BUTTON5_DOUBLE_CLICKED => {
+            crosscurses::BUTTON1_DOUBLE_CLICKED
+            | crosscurses::BUTTON2_DOUBLE_CLICKED
+            | crosscurses::BUTTON3_DOUBLE_CLICKED
+            | crosscurses::BUTTON4_DOUBLE_CLICKED
+            | crosscurses::BUTTON5_DOUBLE_CLICKED => {
                 for _ in 0..2 {
                     f(MouseEvent::Down(button, x, y, modifiers));
                     f(MouseEvent::Up(button, x, y, modifiers));
                 }
             }
-            pancurses::BUTTON1_TRIPLE_CLICKED
-            | pancurses::BUTTON2_TRIPLE_CLICKED
-            | pancurses::BUTTON3_TRIPLE_CLICKED
-            | pancurses::BUTTON4_TRIPLE_CLICKED
-            | pancurses::BUTTON5_TRIPLE_CLICKED => {
+            crosscurses::BUTTON1_TRIPLE_CLICKED
+            | crosscurses::BUTTON2_TRIPLE_CLICKED
+            | crosscurses::BUTTON3_TRIPLE_CLICKED
+            | crosscurses::BUTTON4_TRIPLE_CLICKED
+            | crosscurses::BUTTON5_TRIPLE_CLICKED => {
                 for _ in 0..3 {
                     f(MouseEvent::Down(button, x, y, modifiers));
                     f(MouseEvent::Up(button, x, y, modifiers));
@@ -374,34 +375,34 @@ impl<W: Write> super::BackendImpl<W> {
         }
     }
 
-    /// Returns the Key enum corresponding to the given pancurses event.
+    /// Returns the Key enum corresponding to the given crosscurses event.
     fn map_mouse_button(&self, bare_event: mmask_t) -> MouseButton {
         match bare_event {
-            pancurses::BUTTON1_RELEASED
-            | pancurses::BUTTON1_PRESSED
-            | pancurses::BUTTON1_CLICKED
-            | pancurses::BUTTON1_DOUBLE_CLICKED
-            | pancurses::BUTTON1_TRIPLE_CLICKED => MouseButton::Left,
-            pancurses::BUTTON2_RELEASED
-            | pancurses::BUTTON2_PRESSED
-            | pancurses::BUTTON2_CLICKED
-            | pancurses::BUTTON2_DOUBLE_CLICKED
-            | pancurses::BUTTON2_TRIPLE_CLICKED => MouseButton::Middle,
-            pancurses::BUTTON3_RELEASED
-            | pancurses::BUTTON3_PRESSED
-            | pancurses::BUTTON3_CLICKED
-            | pancurses::BUTTON3_DOUBLE_CLICKED
-            | pancurses::BUTTON3_TRIPLE_CLICKED => MouseButton::Right,
-            pancurses::BUTTON4_RELEASED
-            | pancurses::BUTTON4_PRESSED
-            | pancurses::BUTTON4_CLICKED
-            | pancurses::BUTTON4_DOUBLE_CLICKED
-            | pancurses::BUTTON4_TRIPLE_CLICKED => MouseButton::Unknown,
-            pancurses::BUTTON5_RELEASED
-            | pancurses::BUTTON5_PRESSED
-            | pancurses::BUTTON5_CLICKED
-            | pancurses::BUTTON5_DOUBLE_CLICKED
-            | pancurses::BUTTON5_TRIPLE_CLICKED => MouseButton::Unknown,
+            crosscurses::BUTTON1_RELEASED
+            | crosscurses::BUTTON1_PRESSED
+            | crosscurses::BUTTON1_CLICKED
+            | crosscurses::BUTTON1_DOUBLE_CLICKED
+            | crosscurses::BUTTON1_TRIPLE_CLICKED => MouseButton::Left,
+            crosscurses::BUTTON2_RELEASED
+            | crosscurses::BUTTON2_PRESSED
+            | crosscurses::BUTTON2_CLICKED
+            | crosscurses::BUTTON2_DOUBLE_CLICKED
+            | crosscurses::BUTTON2_TRIPLE_CLICKED => MouseButton::Middle,
+            crosscurses::BUTTON3_RELEASED
+            | crosscurses::BUTTON3_PRESSED
+            | crosscurses::BUTTON3_CLICKED
+            | crosscurses::BUTTON3_DOUBLE_CLICKED
+            | crosscurses::BUTTON3_TRIPLE_CLICKED => MouseButton::Right,
+            crosscurses::BUTTON4_RELEASED
+            | crosscurses::BUTTON4_PRESSED
+            | crosscurses::BUTTON4_CLICKED
+            | crosscurses::BUTTON4_DOUBLE_CLICKED
+            | crosscurses::BUTTON4_TRIPLE_CLICKED => MouseButton::Unknown,
+            crosscurses::BUTTON5_RELEASED
+            | crosscurses::BUTTON5_PRESSED
+            | crosscurses::BUTTON5_CLICKED
+            | crosscurses::BUTTON5_DOUBLE_CLICKED
+            | crosscurses::BUTTON5_TRIPLE_CLICKED => MouseButton::Unknown,
             _ => MouseButton::Unknown,
         }
     }
@@ -418,14 +419,14 @@ pub fn find_closest(color: Color, max_colors: i16) -> i16 {
     // translate to closest supported color.
     match color {
         // Dark colors
-        Color::Black => pancurses::COLOR_BLACK,
-        Color::DarkRed => pancurses::COLOR_RED,
-        Color::DarkGreen => pancurses::COLOR_GREEN,
-        Color::DarkYellow => pancurses::COLOR_YELLOW,
-        Color::DarkBlue => pancurses::COLOR_BLUE,
-        Color::DarkMagenta => pancurses::COLOR_MAGENTA,
-        Color::DarkCyan => pancurses::COLOR_CYAN,
-        Color::Grey => pancurses::COLOR_WHITE,
+        Color::Black => crosscurses::COLOR_BLACK,
+        Color::DarkRed => crosscurses::COLOR_RED,
+        Color::DarkGreen => crosscurses::COLOR_GREEN,
+        Color::DarkYellow => crosscurses::COLOR_YELLOW,
+        Color::DarkBlue => crosscurses::COLOR_BLUE,
+        Color::DarkMagenta => crosscurses::COLOR_MAGENTA,
+        Color::DarkCyan => crosscurses::COLOR_CYAN,
+        Color::Grey => crosscurses::COLOR_WHITE,
 
         // Light colors
         Color::Red => 9 % max_colors,

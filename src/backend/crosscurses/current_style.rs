@@ -1,5 +1,5 @@
 use crate::Color;
-use pancurses::Attributes;
+use crosscurses::Attributes;
 
 pub(crate) struct CurrentStyle {
     pub(crate) foreground: Color,
