@@ -1,6 +1,6 @@
 [package]
 name = "terminal"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["T. Post"]
 description = "Unified API for different TUI libraries."
 edition = "2018"

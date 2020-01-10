@@ -54,7 +54,7 @@ feature flag: (crosscurses-backend)
 - Uses stdout for terminal size 
 - Uses `/dev/tty` and stdin for cursor position.
 
-### Pancurses
+### Crosscurses
 
 feature flag: (crosscurses-backend)
 

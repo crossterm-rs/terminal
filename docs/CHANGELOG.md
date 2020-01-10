@@ -1,6 +1,6 @@
 # Version 0.2
 
-- Pancurses backend implemented.
+- Crosscurses/pancurses backend implemented.
 
 # Version 0.1
 

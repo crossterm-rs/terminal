@@ -12,7 +12,7 @@
 # Unified API for different TUI libraries.
 
 This library offers a universal API over various terminal libraries such as 
-[termion][termion], [crossterm][crossterm], [ncurses][ncurses], [crosscurses][crosscurses] and [console][console]. 
+[termion][termion], [crossterm][crossterm], [ncurses][ncurses], [pancurses][pancurses], and [console][console]. 
 
 Why would I need this library? Three main reasons:
 
@@ -57,7 +57,7 @@ WARNING: Do not change following heading title as it's used in the URL by other 
 
 - [Crossterm][crossterm] (Pure rust and crossplatform)
 - [Termion][termion] (Pure rust for UNIX systems)
-- [Pancurses][crosscurses] (crossplatform but requires ncurses C dependency)
+- [Crosscurses][crosscurses] (crossplatform but requires ncurses C dependency (**fork pancurses**))
 
 Use **one** of the below feature flags to choose an backend. 
 
@@ -65,7 +65,7 @@ Use **one** of the below feature flags to choose an backend.
 | :------ | :------ |
 | `crossterm-backend` | crossterm backend will be used.|
 | `termion-backend` | termion backend will be used.|
-| `crosscurses-backend` | termion backend will be used.|
+| `crosscurses-backend` | crosscurses backend will be used.|
 
 _like_
 ```toml
@@ -168,4 +168,5 @@ License - see the [LICENSE](https://github.com/crossterm-rs/terminal/blob/master
 [termimad]: https://crates.io/crates/termimad
 [ncurses]: https://crates.io/crates/ncurses
 [crosscurses]: https://crates.io/crates/crosscurses
+[pancurses]: https://crates.io/crates/pancurses
 [console]: https://crates.io/crates/console
