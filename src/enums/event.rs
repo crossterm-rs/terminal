@@ -54,6 +54,20 @@ pub enum MouseEvent {
     ScrollUp(u16, u16, KeyModifiers),
 }
 
+impl MouseEvent {
+    /// Returns the button used by this event, if any.
+    ///
+    /// Returns `None` if `self` is `WheelUp` or `WheelDown`.
+    pub fn button(self) -> Option<MouseButton> {
+        match self {
+            MouseEvent::Down(btn, ..) | MouseEvent::Up(btn, ..) | MouseEvent::Drag(btn, ..) => {
+                Some(btn)
+            }
+            _ => None,
+        }
+    }
+}
+
 /// Represents a mouse button.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]

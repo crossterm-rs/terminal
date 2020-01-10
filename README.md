@@ -26,6 +26,7 @@ Why would I need this library? Three main reasons:
     This library offers a very thin and simple abstraction to make it somewhat easier for the user.
     This is achieved by hiding the implementation details. 
     Implementation details cover raw mode, write to buffer, batch operations.
+    Yet an other abstraction :).
 
 3) Libraries differ in how they work. 
 
@@ -56,15 +57,15 @@ WARNING: Do not change following heading title as it's used in the URL by other 
 
 - [Crossterm][crossterm] (Pure rust and crossplatform)
 - [Termion][termion] (Pure rust for UNIX systems)
-
+- [Pancurses][pancurses] (crossplatform but requires ncurses C dependency)
 
 Use **one** of the below feature flags to choose an backend. 
-
 
 | Feature | Description |
 | :------ | :------ |
 | `crossterm-backend` | crossterm backend will be used.|
 | `termion-backend` | termion backend will be used.|
+| `pancurses-backend` | termion backend will be used.|
 
 _like_
 ```toml
@@ -75,7 +76,6 @@ features = ["crossterm-backend"]
 
 ### Yet to Implement
 - [ncurses][ncurses]
-- [pancurses][pancurses]
 
 ## Getting Started
 
@@ -94,25 +94,27 @@ features = ["your_backend_choice"]
 <p></p>
  
 ```rust
-use terminal::{ClearType, Action, Value, Retreived, error};
+use terminal::{Action, Clear, error, Retrieved, Value};
+use std::io::Write;
 
 pub fn main() -> error::Result<()> {
-    let terminal = terminal::stdout();
+    let mut terminal = terminal::stdout();
 
     // perform an single action.
-    terminal.act(Action::ClearTerminal(ClearType::All))?;
+    terminal.act(Action::ClearTerminal(Clear::All))?;
 
     // batch multiple actions.
-    for i in 0..100 {
+    for i in 0..20 {
         terminal.batch(Action::MoveCursorTo(0, i))?;
+        terminal.write(format!("{}", i).as_bytes());
     }
 
     // execute batch.
     terminal.flush_batch();
 
     // get an terminal value.
-    if let Retreived::TerminalSize(x, y) = terminal.get(Value::TerminalSize)? {
-        println!("x: {}, y: {}", x, y);
+    if let Retrieved::TerminalSize(x, y) = terminal.get(Value::TerminalSize)? {
+        println!("\nx: {}, y: {}", x, y);
     }
 
     Ok(())
