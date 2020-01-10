@@ -2,14 +2,14 @@
 
 | Backend | `Action` Not Supported |
 | :------ | :------ |
-| `pancurses` | ScrollUp, ScrollDown, Enter/Leave alternate screen (default alternate screen) |
+| `crosscurses` | ScrollUp, ScrollDown, Enter/Leave alternate screen (default alternate screen) |
 | `termion` | ScrollUp, ScrollDown,  |
 | `crossterm` |       |
 
 
 | Backend | `Attribute` Not Supported |
 | :------ | :------ |
-| `pancurses` | Fraktur, NormalIntensity, Framed |
+| `crosscurses` | Fraktur, NormalIntensity, Framed |
 | `termion` | ConcealOn, ConcealOff, Fraktur, NormalIntensity |
 | `crossterm` |      | 
 
@@ -36,7 +36,7 @@ feature flag: (crossterm-backend)
 
 ### Termion (termion-backend)
 
-feature flag: (pancurses-backend)
+feature flag: (crosscurses-backend)
 
 **pros**
 - Written in pure Rust
@@ -56,7 +56,7 @@ feature flag: (pancurses-backend)
 
 ### Pancurses
 
-feature flag: (pancurses-backend)
+feature flag: (crosscurses-backend)
 
 **pros**
 - Based on ncurses and pdcurses. 

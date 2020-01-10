@@ -2,10 +2,10 @@ use std::io::Write;
 
 use crate::{error, Action, Retrieved, Value};
 
+#[cfg(feature = "crosscurses-backend")]
+pub(crate) use self::crosscurses::BackendImpl;
 #[cfg(feature = "crossterm-backend")]
 pub(crate) use self::crossterm::BackendImpl;
-#[cfg(feature = "pancurses-backend")]
-pub(crate) use self::pancurses::BackendImpl;
 #[cfg(feature = "termion-backend")]
 pub(crate) use self::termion::BackendImpl;
 
@@ -18,11 +18,8 @@ mod termion;
 #[cfg(feature = "termion-backend")]
 mod resize;
 
-#[cfg(feature = "pancurses-backend")]
-mod pancurses;
-
-#[cfg(feature = "pancurses-backend")]
-mod anes_mappings;
+#[cfg(feature = "crosscurses-backend")]
+mod crosscurses;
 
 /// Interface to an backend library.
 pub trait Backend<W: Write> {
