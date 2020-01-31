@@ -1,8 +1,8 @@
 [package]
 name = "terminal"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["T. Post"]
-description = "Unified API for different TUI libraries."
+description = "Unified API over different TUI libraries."
 edition = "2018"
 repository = "https://github.com/crossterm-rs/terminal"
 documentation = "https://docs.rs/terminal/"
@@ -42,7 +42,7 @@ version = "1.5.3"
 
 [dependencies.crossterm]
 optional = true
-version = "0.14"
+version = "0.15"
 
 [dependencies.crosscurses]
 optional = true
@@ -53,6 +53,6 @@ features = ["wide"]
 # UNIX dependencies
 #
 [target.'cfg(unix)'.dependencies]
-signal-hook = { version = "0.1.12", optional = true }
+signal-hook = { version = "0.1.13", optional = true }
 libc = { version = "0.2.66", optional = true }
 crossbeam-channel = { version = "0.4.0", optional = true }

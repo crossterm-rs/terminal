@@ -11,11 +11,18 @@ use crate::{backend::Backend, error, error::ErrorKind, Action, Event, Retrieved,
 pub struct BackendImpl<W: Write> {
     // The internal buffer on which operations are performed and written to.
     buffer: W,
+    // Crossterm panics if we disable the mouse event capture before we enabled it.
+    // We need to check in the `drop` if we enabled it to prevent this.
+    // Should be fixed in later crossterm releases.
+    mouse_capture_enabled: bool,
 }
 
 impl<W: Write> Backend<W> for BackendImpl<W> {
     fn create(buffer: W) -> BackendImpl<W> {
-        BackendImpl { buffer }
+        BackendImpl {
+            buffer,
+            mouse_capture_enabled: false,
+        }
     }
 
     fn act(&mut self, action: Action) -> error::Result<()> {
@@ -65,8 +72,14 @@ impl<W: Write> Backend<W> for BackendImpl<W> {
                 disable_raw_mode()?;
                 return Ok(());
             }
-            Action::EnableMouseCapture => buffer.queue(event::EnableMouseCapture)?,
-            Action::DisableMouseCapture => buffer.queue(event::DisableMouseCapture)?,
+            Action::EnableMouseCapture => {
+                self.mouse_capture_enabled = true;
+                buffer.queue(event::EnableMouseCapture)?
+            }
+            Action::DisableMouseCapture => {
+                self.mouse_capture_enabled = false;
+                buffer.queue(event::DisableMouseCapture)?
+            }
         };
 
         Ok(())
@@ -110,8 +123,12 @@ impl<W: Write> Drop for BackendImpl<W> {
         io::stdout()
             .execute(terminal::LeaveAlternateScreen)
             .unwrap();
+
         disable_raw_mode().unwrap();
-        io::stdout().execute(event::DisableMouseCapture).unwrap();
+
+        if self.mouse_capture_enabled {
+            io::stdout().execute(event::DisableMouseCapture).unwrap();
+        }
     }
 }
 

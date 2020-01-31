@@ -9,32 +9,20 @@
 [![Stable Status][actions-stable-badge]][actions-link]
 [![Beta Status][actions-nightly-badge]][actions-link]
 
-# Unified API for different TUI libraries.
+# Unified API over different TUI libraries.
 
 This library offers a universal API over various terminal libraries such as 
 [termion][termion], [crossterm][crossterm], [ncurses][ncurses], [pancurses][pancurses], and [console][console]. 
 
 Why would I need this library? Three main reasons:
+1. Being less dependent on a specific terminal library with certain features.
+2. Support different features depending on the chosen backend and allow you to change at any given time.
+3. Hides implementation details (raw mode, write to the buffer, batch operations).
+4. Hides the differences (cursor 0 or 1 based, cleaning resources, event handling, performing actions. )
+5. Reduces backend mapping duplication in the ecosystem ([cursive][cursive], [tui][tui], [termimad][termimad], ...)
 
-1) These libraries differ in the API.
- 
-    A smart choice would be to create an adapter layer to one of these libraries so that you wont have an direct dependency 
-    and you won't need to update your code base when you want to switch or upgrade. Creating those adapters is boring (mapping types).
-    Fortunately, this library does that for you. Some examples of those mappings can be found in those libraries: ([cursive][cursive], [tui][tui], [termimad][termimad], ...).
-2) These libraries can be complex for beginners. 
- 
-    This library offers a very thin and simple abstraction to make it somewhat easier for the user.
-    This is achieved by hiding the implementation details. 
-    Implementation details cover raw mode, write to buffer, batch operations.
-    Yet an other abstraction :).
-
-3) Libraries differ in how they work. 
-
-    Like cursor 0 or 1 based, cleaning resources, event handling, performing actions.  
-
-
-This libary is still quite young. You can expect complications. 
-If you experience problems, feel free to make an issue. 
+This library is still quite young. 
+If you experience problems, feel free to make an issue.
 I'd fix it as soon as possible.
 
 ## Table of Contents
