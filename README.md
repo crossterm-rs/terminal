@@ -118,7 +118,7 @@ pub fn main() -> error::Result<()> {
 ### Other Resources
 
 - [API documentation](https://docs.rs/terminal/)
-- [Examples repository](https://github.com/crossterm-rs/terminal/examples)
+- [Examples repository](/examples)
 - [Backend Specification](docs/backend-specification.md)
 
 ## Contributing
