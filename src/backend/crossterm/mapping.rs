@@ -87,7 +87,7 @@ impl From<event::MouseEvent> for MouseEvent {
     fn from(event: event::MouseEvent) -> Self {
         match event {
             event::MouseEvent::Down(btn, x, y, modifiers) => {
-                MouseEvent::Up(btn.into(), x, y, modifiers.into())
+                MouseEvent::Down(btn.into(), x, y, modifiers.into())
             }
             event::MouseEvent::Up(btn, x, y, modifiers) => {
                 MouseEvent::Up(btn.into(), x, y, modifiers.into())
