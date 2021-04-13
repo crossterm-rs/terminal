@@ -30,7 +30,7 @@ impl From<event::MouseEvent> for MouseEvent {
                 } else if btn == event::MouseButton::WheelUp {
                     MouseEvent::ScrollUp(x, y, KeyModifiers::empty())
                 } else {
-                    MouseEvent::Up(btn.into(), x, y, KeyModifiers::empty())
+                    MouseEvent::Down(btn.into(), x, y, KeyModifiers::empty())
                 }
             }
             event::MouseEvent::Release(x, y) => {
